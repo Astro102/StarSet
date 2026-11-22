@@ -15,6 +15,8 @@ Open a terminal in this folder and run `python3 -m http.server 8000`, then visit
 - Country shapes: Natural Earth (public domain)
 - Planet textures: Solar System Scope (CC BY 4.0); Milky Way panorama: ESO/S. Brunier (CC BY 4.0);
   moon maps from the Celestia community (CC BY / BY-SA / CC0)
+- Music in the 3D view: "Deep Space Drift" by Suraj, made with Suno (put the MP3 at `audio/deep-space-drift.mp3`;
+  without it the page streams the track from Suno)
 
 ## Astro, the space guide
 Inside claude.ai, Astro answers with Claude (AI). Everywhere else, including GitHub Pages, it runs as **Astro Lite**
