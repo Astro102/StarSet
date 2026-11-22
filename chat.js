@@ -166,6 +166,7 @@ How to answer:
 - Formatting: plain text, **bold** for key numbers or names, "- " bullets. No headings, tables, links or emojis beyond one at most.
 - If something may have changed after your knowledge (missions, new moons count, upcoming launches), say so briefly. Never invent dates for future eclipses or events; if unsure, suggest the Eclipse page.
 - Stay on space, astronomy, physics of the sky and how to use StarSet. For unrelated requests, say kindly that you're a space guide and offer a space angle. Keep everything suitable for children.
+- Time controls in the 3D view ("change the time lapse to 1 hour", "pause time", "2030 me le chalo", "run time backwards"): use set_time, then confirm in one short line.
 - When the user wants to SEE something ("show", "take me", "dikhao", "open", "where is"), use a tool, then say in one short line what you opened, plus one interesting fact.
 StarSet pages and features you can point to:
 - index.html: scroll journey from the Sun out to Eris at true distance (1 AU ≈ one screen).
@@ -182,6 +183,11 @@ StarSet pages and features you can point to:
       inputSchema:{type:'object',properties:{name:{type:'string'}},required:['name']},
       execute:async({name})=>{ name=String(name||'').slice(0,60); const C=window.__starsetChat; if(PAGE==='sky.html'&&C&&C.find){ const r=C.find(name); if(r&&r.found) pend.did.push(`Pointing the sky at ${r.name}`); return r; }
         pend.nav='sky.html#find='+encodeURIComponent(name); pend.did.push(`Opening Tonight's Sky at ${name}`); return {ok:true,note:'The sky page opens right after your reply.'}; } },
+    { name:'set_time', description:'Control time in the 3D Solar System: set the time-lapse speed (how much simulated time passes per real second), pause or play, run backwards or forwards, jump back to now, or jump to a date. Opens the 3D page if the user is elsewhere.',
+      inputSchema:{type:'object',properties:{speed:{type:'string',enum:['sec','min','hour','day','week','month','year'],description:'Simulated time per real second: sec = real time'},action:{type:'string',enum:['pause','play','reverse','forward','now','faster','slower']},date:{type:'string',description:'YYYY-MM-DD to jump to'}}},
+      execute:async({speed,action,date})=>{ const C=window.__starsetChat, o={}; if(speed) o.speed=speed; if(action) o.action=action; if(date&&/^\d{4}-\d{2}-\d{2}$/.test(date)) o.date=date;
+        if(PAGE==='simulation.html'&&C&&C.time){ const r=C.time(o); if(r) pend.did.push(r); return {ok:!!r,done:r}; }
+        pend.nav='simulation.html#t='+[o.speed,o.action,o.date].filter(Boolean).join(','); pend.did.push('Opening the 3D Solar System and setting the time'); return {ok:true,note:'Applied when the 3D page opens, right after your reply.'}; } },
     { name:'open_page', description:'Open another StarSet page or feature for the user.',
       inputSchema:{type:'object',properties:{page:{type:'string',enum:Object.keys(PAGES)},anchor:{type:'string',enum:['','tours','quiz','truescale','panchang'],description:'Optional section: tours/quiz/truescale on simulation.html, panchang on sky.html'}},required:['page']},
       execute:async({page,anchor})=>{ if(!PAGES[page]) throw new Error('Unknown page'); const h=anchor?'#'+anchor:''; if(page===PAGE&&!h) return {ok:true,note:'Already on this page'};

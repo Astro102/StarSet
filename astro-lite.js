@@ -151,6 +151,35 @@ function fact(b,what,lang){ const N='**'+nm(b,lang)+'**';
       return intro+(b.desc||'')+(b.fact?'\n\n'+b.fact:'')+(lang!=='en'?'\n\n'+L(lang,'','(Detail English me hai — size, doori ya moons Hinglish me pooch sakte ho.)','(विस्तार अंग्रेज़ी में है — आकार, दूरी या चंद्रमा हिंदी में पूछ सकते हैं।)'):''); } } }
 
 /* ---------- main ---------- */
+/* ---------- time controls for the 3D view ---------- */
+const UNITS=[['sec',['sec','secs','second','seconds','sekand','सेकंड','सेकेंड']],['min',['min','mins','minute','minutes','minat','मिनट']],['hour',['hour','hours','hr','hrs','ghanta','ghante','ghanta','घंटा','घंटे']],
+  ['day',['day','days','din','दिन']],['week',['week','weeks','hafta','hafte','हफ्ता','हफ़्ता','सप्ताह']],['month',['month','months','mahina','mahine','महीना','महीने']],['year',['year','years','saal','sal','varsh','साल','वर्ष']]];
+const TIMEW=['time','lapse','timelapse','time lapse','speed','rate','per second','samay','waqt','vakt','समय','टाइम','गति','स्पीड'];
+const SETW=['set','change','make','put','kar','karo','kardo','kar do','karde','kar de','rakh','rakho','rakhdo','chalao','chala','करो','कर दो','रखो','चलाओ'];
+const MONTHS={jan:1,january:1,feb:2,february:2,mar:3,march:3,apr:4,april:4,may:5,jun:6,june:6,jul:7,july:7,aug:8,august:8,sep:9,sept:9,september:9,oct:10,october:10,nov:11,november:11,dec:12,december:12};
+function timeIntent(t,raw){ const o={};
+  const tw=has(t,TIMEW), setw=has(t,SETW);
+  // speed: the first time unit, ignoring "per second"
+  const u=t.replace(/ (per|prati|har|प्रति|हर) (sec|second|sekand|सेकंड) /g,' ');
+  let best=null; for(const [k,ws] of UNITS){ for(const w of ws){ const i=u.indexOf(' '+w+' '); if(i>=0&&(!best||i<best[0])) best=[i,k]; } }
+  if(best&&(tw||setw)&&!/(kitne|kitna|how many|how long|how much|कितने|कितना)/.test(t)) o.speed=best[1];
+  if(has(t,['real time','realtime','live time','asli time','normal speed'])) o.speed='sec';
+  if(has(t,['pause','freeze','roko','rok do','rok','ruko','thehro','रोको','रोक','रुको'])||(tw&&has(t,['stop']))) o.action='pause';
+  else if(has(t,['resume','unpause','play'])||(tw&&has(t,['start','chalu','shuru','चालू','शुरू']))) o.action='play';
+  else if(has(t,['reverse','backward','backwards','rewind','ulta','ulti','peeche','piche','उल्टा','पीछे'])) o.action='reverse';
+  else if(tw&&has(t,['forward','forwards','aage','सीधा','आगे'])) o.action='forward';
+  else if(has(t,['faster','speed up','tez','tezi','jaldi','तेज़','तेज'])&&!o.speed) o.action='faster';
+  else if(has(t,['slower','slow down','slow','dheere','dheema','dhire','धीरे'])&&!o.speed) o.action='slower';
+  else if((tw||has(t,['jump','back to','go back','wapas','vapas','reset','वापस']))&&has(t,['now','today','present','aaj','abhi','reset','आज','अभी'])) o.action='now';
+  // a date: "2030 me le chalo", "go to 15 aug 2027", "set date 2027-08-02"
+  const y=raw.match(/\b(1[6-9]\d\d|2[0-2]\d\d)\b/);
+  if(y&&has(t,['go to','jump','take me','le chalo','le chal','le jao','chalo','date','year','saal','in','me','mein','pe','to','set','तक','में','पर','ले चलो'])&&!has(t,['born','discovered','launched','khoja','launch'])){
+    const iso=raw.match(/(\d{4})-(\d{1,2})-(\d{1,2})/); let Y=+y[1], M=null, D=null;
+    if(iso){ M=+iso[2]; D=+iso[3]; } else { for(const [k,v] of Object.entries(MONTHS)) if(t.includes(' '+k+' ')){ M=v; break; } const d=raw.match(/\b([0-2]?\d|3[01])(st|nd|rd|th)?\b(?!\d)/); if(M&&d&&+d[1]>0&&+d[1]!==Y) D=+d[1]; }
+    const now=new Date(); M=M||now.getMonth()+1; D=D||(M===now.getMonth()+1?now.getDate():1);
+    o.date=`${Y}-${String(M).padStart(2,'0')}-${String(D).padStart(2,'0')}`; }
+  return (o.speed||o.action||o.date)?o:null; }
+const SPEEDTXT={sec:['real time (1 second per second)','real time (1 second per second)'],min:['1 minute per second','1 minute per second'],hour:['1 hour per second','1 ghanta per second'],day:['1 day per second','1 din per second'],week:['1 week per second','1 hafta per second'],month:['1 month per second','1 mahina per second'],year:['1 year per second','1 saal per second']};
 function answer(raw,ctx){ const t=norm(raw), lang=langOf(raw,t), out={text:'',actions:[],lang};
   const bodies=bodiesIn(t); const sky=skyIn(t);
   const want=k=>has(t,W[k]);
@@ -163,6 +192,13 @@ function answer(raw,ctx){ const t=norm(raw), lang=langOf(raw,t), out={text:'',ac
       if(f.hello){ out.text=L(lang,"Hi! I'm Astro Lite. Ask me about any planet, moon or star — or say \"show me Saturn\".","Namaste! Main Astro Lite hu. Kisi bhi planet, moon ya taare ke baare me poocho — ya bolo \"Saturn dikhao\".","नमस्ते! मैं Astro Lite हूँ। किसी भी ग्रह या तारे के बारे में पूछिए — या कहिए \"शनि दिखाओ\"।"); return out; }
       if(f.thanks){ out.text=L(lang,'Happy to help! Clear skies 🌌','Khushi hui! Aasmaan saaf rahe 🌌','खुशी हुई! 🌌'); return out; } } } }
   if(FAQ.find(f=>f.help).k.some(k=>t.includes(' '+k+' '))&&!bodies.filter(k=>k!=='earth').length){ out.text=L(lang,HELP.en,HELP.hg,HELP.hi); return out; }
+  // time controls ("change the time lapse to 1 min", "1 hour kar do", "time roko", "2030 me le chalo")
+  { const ti=main||sky?null:timeIntent(t,raw); if(ti){ const bits=[];
+      if(ti.speed) bits.push(L(lang,`time-lapse set to **${SPEEDTXT[ti.speed][0]}**`,`time-lapse ab **${SPEEDTXT[ti.speed][1]}**`,`टाइम-लैप्स अब **${SPEEDTXT[ti.speed][1]}**`));
+      const A={pause:['time paused','time rok diya','समय रोक दिया'],play:['time running again','time phir se chalu','समय फिर से चालू'],reverse:['time running backwards','time ab ulta chal raha hai','समय अब उल्टा चल रहा है'],forward:['time running forwards','time ab aage chal raha hai','समय अब आगे चल रहा है'],now:['back to the present moment','wapas abhi ke time pe','वापस अभी के समय पर'],faster:['time sped up one step','time ek step tez','समय एक कदम तेज़'],slower:['time slowed down one step','time ek step dheema','समय एक कदम धीमा']}[ti.action];
+      if(A) bits.push(L(lang,A[0],A[1],A[2])); if(ti.date) bits.push(L(lang,`jumped to **${ti.date}**`,`**${ti.date}** pe pahunch gaye`,`**${ti.date}** पर पहुँच गए`));
+      const s=bits.join(', '); out.text=s[0].toUpperCase()+s.slice(1)+(lang==='hi'?'।':'.')+(ctx.page!=='simulation.html'?L(lang,' Opening the 3D Solar System.',' 3D Solar System khol raha hu.',' 3D सौर मंडल खोल रहा हूँ।'):'');
+      out.actions.push(['set_time',ti]); return out; } }
   // next eclipse: only the Eclipse page computes these
   if(has(t,['eclipse','eclipses','grahan','ग्रहण'])&&has(t,['next','upcoming','agla','agle','kab','when','अगला','कब'])){
     out.text=L(lang,"The **Eclipse page** calculates every upcoming solar and lunar eclipse and shows how much of each one you'll see from your city, minute by minute. Opening it now.",'**Eclipse page** har aane wale surya aur chandra grahan ko calculate karta hai aur dikhata hai ki aapke shehar se kitna dikhega. Abhi khol raha hu.','**ग्रहण पेज** हर आने वाले ग्रहण की गणना करता है और दिखाता है कि आपके शहर से कितना दिखेगा। खोल रहा हूँ।');

@@ -1904,6 +1904,8 @@ function tickTour(dt){ if(!tour||!tourAuto||flight) return; tourT+=dt; const st=
 
 function handleHash(){
   const h=decodeURIComponent(location.hash.slice(1)).toLowerCase(); if(!h) return;
+  if(h.startsWith('t=')){ const o={}; h.slice(2).split(',').forEach(x=>{ if(/^\d{4}-\d{2}-\d{2}$/.test(x)) o.date=x; else if(['sec','min','hour','day','week','month','year'].includes(x)) o.speed=x; else o.action=x; });
+    window.__starsetChat.time(o); history.replaceState(null,'',location.pathname+location.search); return; }
   if(h==='quiz'){ openQuiz(); return; }
   if(h==='tours'){ openTours(); return; }
   if(h.startsWith('tour-')){ startTour(h.slice(5)); return; }
@@ -1917,6 +1919,17 @@ window.__starsetChat={
   context:()=>{ const d=new Date((simDays+J2000_UNIX_DAYS)*86400000), lab=document.querySelector('[data-speed].on')?.textContent||'', ts=TS.open?TS.state():null;
     return `3D Solar System. Simulation date ${d.toUTCString()}${paused?' (time paused)':`, time running at ${lab} per second${dir<0?' backwards':''}`}. `+
       (ts?`True Scale mode is open${ts.focus?', looking at '+ts.focus:''}.`:focused?`Camera is focused on ${focused.data.name} (${focused.data.type}).`:'Showing the whole Solar System overview.'); },
+  time:(o={})=>{ const S={sec:'0.0000115741',min:'0.000694444',hour:'0.0416667',day:'1',week:'7',month:'30.4375',year:'365.25'}, N=Object.keys(S), did=[];
+    const label=k=>`1 ${k==='sec'?'second':k==='min'?'minute':k} per second`;
+    if(o.action==='faster'||o.action==='slower'){ const cur=N.findIndex(k=>Math.abs(+S[k]-speed)<1e-9); const i=Math.max(0,Math.min(N.length-1,(cur<0?3:cur)+(o.action==='faster'?1:-1))); o.speed=N[i]; }
+    if(o.speed&&S[o.speed]){ document.querySelector(`[data-speed="${S[o.speed]}"]`).click(); did.push('Time speed: '+label(o.speed)); }
+    if(o.action==='pause'&&!paused){ togglePause(); did.push('Time paused'); }
+    if(o.action==='play'&&paused){ togglePause(); did.push('Time running'); }
+    if(o.action==='reverse'){ $('tbRev').click(); did.push('Time running backwards'); }
+    if(o.action==='forward'){ $('tbFwd').click(); did.push('Time running forwards'); }
+    if(o.action==='now'){ $('tbNow').click(); did.push('Back to the present moment'); }
+    if(o.date){ const t=Date.parse(o.date+(String(o.date).length<=10?'T12:00:00':'')); if(!isNaN(t)&&t>-6e12&&t<1e13){ simDays=t/86400000-J2000_UNIX_DAYS; did.push('Jumped to '+new Date(t).toDateString().slice(4)); } }
+    return did.join(' · ')||null; },
   show:(key,ts)=>{ const b=bodies.find(x=>x.data.key===key); closeQuiz(); closeTours();
     if(ts){ TS.show(); TS.goTo(key); return `True Scale: flying to ${b?b.data.name:key}`; }
     if(!b) return null; if(TS.open) TS.hide(); focusBody(b); return `Flying to ${b.data.name}`; }
