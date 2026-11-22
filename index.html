@@ -655,7 +655,7 @@ $('hNext').onclick=()=>{ const n=nextStop(); n? go(n.key) : go('0'); };
 const io=new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting) e.target.classList.add('in'); }),{rootMargin:'-12% 0px -12% 0px'});
 document.querySelectorAll('.say,.endnote,.fly').forEach(el=>io.observe(el));
 let sunG=null, sunGL=false;
-const SPIN_K=matchMedia('(prefers-reduced-motion: reduce)').matches?0:.7;   // turns per second = spin × this
+const SPIN_K=matchMedia('(prefers-reduced-motion: reduce)').matches?0:.35;   // turns per second = spin × this (Earth ≈ one turn a minute)
 async function initSun(){ const cv=$('sunDisk'); const T=await textureFor('sun',1638);
   const gg=GLGlobe.create(cv,{...CARD_OPTS.sun,tilt:.13});
   if(gg){ gg.setTex(T); gg.rot=.3; gg.spin=CARD_OPTS.sun.spin; gg.draw(); cv.classList.add('ready'); sunG=gg; sunGL=true; return; }
