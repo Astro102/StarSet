@@ -396,6 +396,11 @@ button.list-h svg{margin-left:auto;transition:transform .2s} .grp.open button.li
 #labels .lbl.gc{pointer-events:auto;cursor:help;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,214,150,.78);display:flex;align-items:center;gap:6px}
 #labels .lbl.gc::before{content:'';display:block;position:static;width:14px;height:14px;border-radius:50%;border:1px solid rgba(255,214,150,.6);background:none}
 #labels .lbl.gc span{color:rgba(255,214,150,.5)}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:2;opacity:0;transition:opacity .4s;
+  background:radial-gradient(ellipse 85% 80% at 50% 48%,transparent 55%,rgba(0,0,4,.5) 100%)}
+#fx::after{content:'';position:absolute;inset:0;opacity:.07;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+body.fx-on #fx{opacity:1} body.ts-on #fx{opacity:0}
 body:not(.show-craft) .lbl.craft,body:not(.show-comet) .lbl.comet,body:not(.show-belt) .lbl.belt{visibility:hidden}
 /* status + compass */
 #status{position:fixed;left:18px;bottom:22px;display:flex;gap:22px;z-index:4;font:400 12px var(--sans);color:#a7b0bd}
@@ -446,6 +451,7 @@ body:not(.show-craft) .lbl.craft,body:not(.show-comet) .lbl.comet,body:not(.show
 </head>
 <body>
 <canvas id="scene"></canvas>
+<div id="fx" aria-hidden="true"></div>
 <div id="labels"></div>
 <!-- Background music: "Deep Space Drift" by Suraj, made with Suno (bundled with the site). -->
 <audio id="bgm" loop preload="none" src="audio/deep-space-drift.mp3"></audio>
@@ -478,6 +484,7 @@ body:not(.show-craft) .lbl.craft,body:not(.show-comet) .lbl.comet,body:not(.show
     <label class="tg"><input type="checkbox" id="tgLabels" checked> Labels</label>
     <label class="tg"><input type="checkbox" id="tgBelts" checked> Asteroid &amp; Kuiper belts</label>
     <label class="tg"><input type="checkbox" id="tgSky" checked> Milky Way background</label>
+    <label class="tg"><input type="checkbox" id="tgFx"> Cinematic look</label>
   </div>
 </nav>
 
@@ -566,6 +573,10 @@ setTimeout(function(){ if(!window.__orreryStarted){ window.__bootLog('✕ 3D eng
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 window.__orreryStarted = true;
 const log = window.__bootLog;
 
@@ -805,7 +816,7 @@ function makeAQ(getRenderer, maxPR, onPR){
     let next=pr; if(fps<45 && pr>minPR){ next=Math.max(minPR,pr-.25); good=0; } else if(fps>56){ if(++good>=2 && pr<maxPR){ next=Math.min(maxPR,pr+.25); good=0; } } else good=0;
     if(next!==pr){ pr=next; const r=getRenderer(); if(r){ r.setPixelRatio(pr); r.setSize(innerWidth,innerHeight,false); } onPR&&onPR(pr); } };
   return q; }
-const AQ=makeAQ(()=>renderer, Math.min(window.devicePixelRatio,LOW?1.5:2), pr=>{ starUniforms&&(starUniforms.uPR.value=pr); });
+const AQ=makeAQ(()=>renderer, Math.min(window.devicePixelRatio,LOW?1.5:2), pr=>{ starUniforms&&(starUniforms.uPR.value=pr); if(typeof composer!=='undefined'&&composer){ composer.setPixelRatio(pr); composer.setSize(innerWidth,innerHeight); } });
 renderer.setPixelRatio(AQ.pr);
 renderer.setSize(innerWidth,innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -1547,6 +1558,7 @@ $('tbNow').onclick=()=>{ simDays=nowDays(); };
 $('tgOrbits').onchange=e=>{ orbitLines.forEach(l=>{ if(!l.userData.moonOrbit) l.visible=e.target.checked; }); kindPaths('craft',pathsOn.craft); kindPaths('comet',pathsOn.comet); showSystem(focused&&(focused.parent||focused)); };
 $('tgLabels').onchange=e=>labelsEl.style.display=e.target.checked?'':'none';
 $('tgBelts').onchange=e=>belts.forEach(b=>b.inst.visible=e.target.checked);
+$('tgFx').onchange=e=>setFx(e.target.checked);
 $('tgSky').onchange=e=>{ if(window.__skyMesh) window.__skyMesh.visible=e.target.checked; if(window.__oldStars) window.__oldStars.visible=!e.target.checked||!window.__skyStars; };
 
 /* ---------------- search ---------------- */
@@ -1665,6 +1677,19 @@ function updateLabels(){
 const camDirV=new THREE.Vector3(), tmpV2=new THREE.Vector3();
 let clockTxt='', hudTick=1, lastSt='', cRing=document.getElementById('cRing');
 { const o=-new Date().getTimezoneOffset(), sg=o<0?'-':'+', a=Math.abs(o); document.getElementById('simSub').textContent=`UTC ${sg}${String(a/60|0).padStart(2,'0')}:${String(a%60).padStart(2,'0')}`; }
+/* cinematic finish: bloom on the Sun and the brightest stars (post-processing), plus a CSS vignette and film grain.
+   Off by default in light-graphics mode; the "Cinematic look" toggle remembers the choice. */
+let composer=null, bloom=null, fxOn=!LOW;
+try{ const v=localStorage.getItem('starset.fx'); if(v) fxOn=v==='on'; }catch(e){}
+function makeComposer(){ if(composer) return; composer=new EffectComposer(renderer); composer.setPixelRatio(AQ.pr); composer.setSize(innerWidth,innerHeight);
+  composer.addPass(new RenderPass(scene,camera));
+  bloom=new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),.42,.45,.9); composer.addPass(bloom);
+  composer.addPass(new OutputPass()); }
+const TM0=renderer.toneMapping, EXP0=renderer.toneMappingExposure;
+/* with post-processing the tone curve would also flatten the Sun to white, so it is applied only by the renderer path */
+function setFx(on){ fxOn=on; document.body.classList.toggle('fx-on',on); if(on) makeComposer(); renderer.toneMapping=on?THREE.NoToneMapping:TM0; renderer.toneMappingExposure=on?1:EXP0; try{ localStorage.setItem('starset.fx',on?'on':'off'); }catch(e){} const c=$('tgFx'); if(c) c.checked=on; }
+addEventListener('resize',()=>{ if(composer) composer.setSize(innerWidth,innerHeight); });
+setFx(fxOn);
 function tick(){
   requestAnimationFrame(tick);
   if(TS.open){ TS.AQ.tick(); TS.frame(); clock.getDelta(); return; }
@@ -1706,7 +1731,7 @@ function tick(){
   if((liveTick+=dt)>.25){ liveTick=0; updateLive(); }
   if(window.__skyMesh) pinSky(window.__skyMesh,camera.position); if(window.__oldStars) window.__oldStars.position.copy(camera.position);
   placeGC();
-  renderer.render(scene,camera);
+  if(fxOn&&composer) composer.render(); else renderer.render(scene,camera);
 }
 
 /* ============================================================
@@ -1972,9 +1997,7 @@ const TS=(()=>{
       if(flight) flight=null; },{passive:false,capture:true});
     // sky
     if(LT.sky&&LT.sky.map){   // drawn first, pinned to the far plane, no depth writes: the cheapest possible full-screen pass
-      const sky=new THREE.Mesh(new THREE.SphereGeometry(1e6,48,24),new THREE.ShaderMaterial({uniforms:{map:{value:LT.sky.map}},side:THREE.BackSide,depthTest:false,depthWrite:false,toneMapped:false,
-        vertexShader:'varying vec2 vUv; void main(){ vUv=uv; vec4 p=projectionMatrix*modelViewMatrix*vec4(position,1.); gl_Position=p.xyww; }',
-        fragmentShader:'uniform sampler2D map; varying vec2 vUv; void main(){ gl_FragColor=vec4(texture2D(map,vUv).rgb*vec3(.8,.8,.84),1.); \n#include <colorspace_fragment>\n}'}));
+      const sky=new THREE.Mesh(new THREE.SphereGeometry(1e6,48,24),makeSkyMaterial(LT.sky.map,.8));
       sky.matrixAutoUpdate=false; pinSky(sky,new THREE.Vector3()); sky.renderOrder=-1; sky.frustumCulled=false; scene3.add(sky); scene3.userData.sky=sky;
       loadStarfield().then(d=>{ if(d) sky.add(makeStarPoints(d,9.5e5,TS_PR)); }); }
     scene3.add(new THREE.AmbientLight(0xffffff,.035)); const sunL=new THREE.PointLight(0xffffff,2.6,0,0); scene3.add(sunL); scene3.userData.sunL=sunL;
@@ -2135,6 +2158,31 @@ const SKY_M=(()=>{ const T=[[-0.0548755604,-0.8734370902,-0.4838350155],[0.49410
 const GC_DIR=new THREE.Vector3(1,0,0).applyMatrix4(SKY_M).normalize();            // direction of the galactic centre (Sagittarius)
 function pinSky(m,at){ m.matrix.copy(SKY_M).setPosition(at); m.matrixWorldNeedsUpdate=true; }
 
+/* The Milky Way backdrop: the real panorama gives the shape and colour; on top, two scales of 3-D value noise (in sky
+   directions, so there are no seams) add fine dust and star-cloud texture wherever the band is bright. That hides the
+   panorama's softness on big screens without moving anything away from where it really is. A light grade warms the
+   bright clouds and deepens the dark lanes, like the reference photos. */
+function makeSkyMaterial(map,gain){
+  return new THREE.ShaderMaterial({ uniforms:{map:{value:map},uGain:{value:gain},uDetail:{value:1},uOct:{value:LOW?1:2}},
+    side:THREE.BackSide, depthWrite:false, depthTest:false,
+    vertexShader:`varying vec2 vUv; varying vec3 vDir; void main(){ vUv=uv; vDir=normalize(position); vec4 p=projectionMatrix*modelViewMatrix*vec4(position,1.); gl_Position=p.xyww; }`,
+    fragmentShader:`uniform sampler2D map; uniform float uGain; uniform float uDetail; uniform int uOct; varying vec2 vUv; varying vec3 vDir;
+      float h(vec3 p){ p=fract(p*.3183099+.1); p*=17.; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }
+      float vn(vec3 x){ vec3 i=floor(x), f=fract(x); f=f*f*(3.-2.*f);
+        return mix(mix(mix(h(i),h(i+vec3(1,0,0)),f.x),mix(h(i+vec3(0,1,0)),h(i+vec3(1,1,0)),f.x),f.y),
+                   mix(mix(h(i+vec3(0,0,1)),h(i+vec3(1,0,1)),f.x),mix(h(i+vec3(0,1,1)),h(i+vec3(1,1,1)),f.x),f.y),f.z); }
+      float fbm(vec3 p){ float a=.5, s=0., w=0.; for(int i=0;i<3;i++){ if(i>=uOct) break; s+=a*vn(p); w+=a; p=p*2.07+11.3; a*=.5; } return s/w; }
+      void main(){
+        vec3 base=texture2D(map,vUv).rgb; float L=dot(base,vec3(.2126,.7152,.0722));
+        float d=.55*fbm(vDir*120.)+.45*fbm(vDir*430.+3.7);                  // ~0.5 on average
+        float k=smoothstep(.002,.04,L)*uDetail;
+        vec3 c=base*max(0.,1.+k*(d-.5)*1.9);                               // mottled star clouds and dust
+        c*=mix(vec3(1.),vec3(1.07,1.,.9),smoothstep(.02,.12,L));            // warm, golden bright clouds
+        c=max(c-.0015,0.)*uGain;                                           // deeper black between stars
+        gl_FragColor=vec4(c,1.);
+        #include <colorspace_fragment>
+      }` }); }
+
 /* Crisp stars over the Milky Way panorama: 26,000 bright stars measured from the ESO photo itself (so they sit exactly on
    their blurry counterparts) plus 56,000 faint ones scattered by the band's brightness. Drawn as GPU points, so they stay
    sharp at any screen size, unlike the 4096-px panorama underneath. Decoded once from starfield.js (6 bytes per star). */
@@ -2165,7 +2213,7 @@ function makeStarPoints(data,radius,prU){
 function addSky(){
   if(!(LT.sky&&LT.sky.map)) return;
   const map=LT.sky.map; try{ map.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy()); map.needsUpdate=true; }catch(e){}
-  const sky=new THREE.Mesh(new THREE.SphereGeometry(2200,96,48),new THREE.MeshBasicMaterial({map,side:THREE.BackSide,depthWrite:false,color:new THREE.Color(.62,.62,.66),toneMapped:false}));
+  const sky=new THREE.Mesh(new THREE.SphereGeometry(2200,96,48),makeSkyMaterial(map,.7)); sky.frustumCulled=false;
   sky.matrixAutoUpdate=false; pinSky(sky,camera.position);   // real orientation, at infinity (re-pinned to the camera every frame)
   sky.renderOrder=-1; scene.add(sky); window.__skyMesh=sky;
   loadStarfield().then(d=>{ if(!d) return; const pts=makeStarPoints(d,2150,starUniforms.uPR); pts.material.uniforms.uGain.value=.85; sky.add(pts); window.__skyStars=pts;
