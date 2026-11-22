@@ -447,8 +447,8 @@ body:not(.show-craft) .lbl.craft,body:not(.show-comet) .lbl.comet,body:not(.show
 <body>
 <canvas id="scene"></canvas>
 <div id="labels"></div>
-<!-- Background music: "Deep Space Drift" by Suraj, made with Suno. The local copy is used when present; otherwise it streams from Suno. -->
-<audio id="bgm" loop preload="none"><source src="audio/deep-space-drift.mp3" type="audio/mpeg"><source src="https://cdn1.suno.ai/84341b37-9697-4022-a7b3-3e41f86fd10d.mp3" type="audio/mpeg"></audio>
+<!-- Background music: "Deep Space Drift" by Suraj, made with Suno (bundled with the site). -->
+<audio id="bgm" loop preload="none" src="audio/deep-space-drift.mp3"></audio>
 
 <header id="topbar" class="panel">
   <button id="navBtn" aria-label="Open menu" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
@@ -1839,8 +1839,7 @@ const MUSIC=(()=>{ const a=$('bgm'), btn=$('musicBtn'), item=$('musicItem'); let
   function level(){ return (speaking||(window.speechSynthesis&&speechSynthesis.speaking))?DUCK:FULL; }
   function play(){ if(!want||!ok||document.hidden) return; cancelAnimationFrame(raf); a.volume=vol; const p=a.play(); if(p&&p.then) p.then(()=>{ started=true; target=level(); ramp(); ui(); }).catch(()=>ui()); }
   function stop(){ target=0; ramp(); }
-  a.addEventListener('error',()=>{},true);
-  a.querySelectorAll('source')[1].addEventListener('error',()=>{ ok=false; btn.hidden=item.hidden=true; });   // neither copy could load
+  a.addEventListener('error',()=>{ ok=false; btn.hidden=item.hidden=true; });   // file missing: hide the controls
   btn.hidden=item.hidden=false; ui();
   const toggle=()=>{ want=!want; try{ localStorage.setItem('starset.music',want?'on':'off'); }catch(e){} if(want){ started=false; play(); } else stop(); ui(); };
   btn.onclick=e=>{ e.stopPropagation(); toggle(); }; item.onclick=e=>{ e.stopPropagation(); toggle(); };
