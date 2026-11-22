@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StarSet — Scroll to Neptune</title>
+<meta name="description" content="A true-distance journey through the Solar System. Scroll from the Sun to Pluto, then explore it in 3D, in tonight's sky, and in your own language.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Exo+2:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ===================== StarSet landing — cinematic =====================
+   Type:   Orbitron = display (H1, planet names, logo). Exo 2 = everything you read; numbers tabular.
+   Scale:  12 · 14 · 16 · 20 · 28 · 44 · display (fitted / clamp).  Nothing under 12px.
+   Colour: amber = actions · cyan = live data · white/grey = text.  Radius: 10px controls · 18px containers. */
+:root{
+  --bg:#020308; --line:rgba(150,190,235,.16); --line2:rgba(150,190,235,.3);
+  --action:#ffb547; --action-ink:#1b1100; --data:#5fd8ff; --text:#eef3f9; --muted:#a3b1c4;
+  --display:'Orbitron',sans-serif; --sans:'Exo 2',system-ui,sans-serif; --mono:'Exo 2',system-ui,sans-serif;
+  --t-xs:12px; --t-sm:14px; --t-md:16px; --t-lg:20px; --t-xl:28px; --t-2xl:44px;
+  --r1:10px; --r2:18px; --amber:var(--action); --cyan:var(--data);
+  --shadow:0 1px 2px rgba(0,0,0,.9),0 0 24px rgba(0,0,0,.65);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg)}
+body{color:var(--text);font:400 var(--t-md)/1.55 var(--sans);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+a{color:inherit} button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.mono,.num{font-family:var(--sans);font-variant-numeric:tabular-nums}
+:focus-visible{outline:2px solid var(--data);outline-offset:3px;border-radius:var(--r1)}
+
+/* actions */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 24px;border-radius:var(--r1);font:600 var(--t-md)/1 var(--sans);letter-spacing:.01em;text-decoration:none;border:1px solid var(--line2);color:var(--text);background:rgba(10,15,25,.6);transition:background .2s,transform .2s}
+.btn.primary{background:var(--action);border-color:var(--action);color:var(--action-ink);box-shadow:0 8px 30px rgba(255,181,71,.25)}
+.btn.primary:hover{background:#ffc66e;transform:translateY(-1px)}
+.tlink{display:inline-flex;align-items:center;min-height:48px;padding:0 6px;font:600 var(--t-md)/1 var(--sans);color:var(--text);text-decoration:none;text-shadow:var(--shadow);border-bottom:1px solid transparent}
+.tlink:hover{color:#fff;text-decoration:underline;text-underline-offset:6px;text-decoration-color:var(--action)}
+
+/* layers: space canvas → Sun → planet stage → film effects → content */
+#space{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+#sunGlow{position:fixed;left:50%;top:0;width:0;height:0;z-index:0;pointer-events:none}
+#sunGlow .sunwrap{position:absolute;left:-500px;top:-500px;width:1000px;height:1000px;transform-origin:50% 50%;will-change:transform}
+#sunGlow .corona{position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle closest-side,rgba(255,214,140,.9) 0 25.5%,rgba(255,180,90,.55) 28%,rgba(255,140,50,.26) 38%,rgba(255,110,30,.1) 60%,rgba(255,90,20,0) 100%)}
+#sunDisk{position:absolute;left:370px;top:370px;width:260px;height:260px;border-radius:50%;opacity:0;transition:opacity .8s;box-shadow:0 0 30px 8px rgba(255,190,90,.55)}
+#sunDisk.ready{opacity:1}
+#stage{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden}
+#stage .layer{position:absolute;left:0;top:0;opacity:0;transform-origin:50% 50%;will-change:transform,opacity}
+#stage .layer canvas{width:100%;height:100%;display:block}
+#stage .layer.egg canvas{transform:scaleX(1.45) scaleY(.82)}
+.fx-vig{position:fixed;inset:0;z-index:3;pointer-events:none;background:radial-gradient(ellipse 120% 90% at 50% 45%,transparent 55%,rgba(0,0,0,.6) 100%)}
+.fx-grain{position:fixed;inset:-50%;z-index:3;pointer-events:none;opacity:.06;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");animation:grain 1.2s steps(5) infinite}
+@keyframes grain{0%{transform:translate(0,0)}20%{transform:translate(-3%,2%)}40%{transform:translate(2%,-3%)}60%{transform:translate(-2%,-2%)}80%{transform:translate(3%,3%)}100%{transform:translate(0,0)}}
+.scrim-b{position:fixed;left:0;right:0;bottom:0;height:200px;z-index:4;pointer-events:none;background:linear-gradient(transparent,rgba(2,3,8,.85))}
+
+/* nav */
+#nav{pointer-events:none;position:fixed;top:0;left:0;right:0;z-index:20;display:flex;align-items:center;gap:12px;padding:16px 28px;background:linear-gradient(rgba(2,3,8,.75),rgba(2,3,8,0))}
+#nav>*{pointer-events:auto}
+.logo{display:flex;align-items:center;gap:9px;font:700 17px/1 var(--display);letter-spacing:.06em;text-decoration:none;min-height:44px}
+#menuBtn{margin-left:auto;min-width:44px;justify-content:center;display:flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;border-radius:var(--r1);font:600 var(--t-sm)/1 var(--sans);color:var(--text)}
+#menuBtn:hover{background:rgba(255,255,255,.06)} #menuBtn b{font-weight:400;font-size:16px}
+.launch{display:inline-flex;align-items:center;min-height:44px;padding:0 18px;border-radius:var(--r1);background:var(--action);color:var(--action-ink);font:700 var(--t-sm)/1 var(--sans);text-decoration:none}
+.launch:hover{background:#ffc66e}
+
+/* explore menu */
+#menu{position:fixed;inset:0;z-index:40;background:rgba(2,3,8,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);overflow:auto;animation:mIn .25s ease}
+#menu[hidden]{display:none} @keyframes mIn{from{opacity:0}to{opacity:1}}
+.mwrap{max-width:1180px;margin:0 auto;padding:22px 24px 40px}
+.mtop{display:flex;justify-content:space-between;align-items:center;margin-bottom:26px}
+.mtop span{font:600 var(--t-xs)/1 var(--sans);letter-spacing:.16em;color:var(--muted);text-transform:uppercase}
+#menuClose{font-size:20px;width:44px;height:44px;border-radius:50%;border:1px solid var(--line2)}
+.mgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:28px}
+.mgrid section:last-child{grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap} .mgrid section:last-child h4{flex-basis:100%}
+.mgrid h4{font:600 var(--t-xs)/1.3 var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.mgrid a,.fpst{display:block;text-align:left;text-decoration:none;padding:14px 16px;border:1px solid var(--line);border-radius:var(--r1);margin-bottom:10px;background:rgba(10,15,25,.5);transition:border-color .2s}
+.mgrid section:last-child a,.fpst{flex:1 1 300px;max-width:380px}
+.mgrid a:hover,.fpst:hover{border-color:var(--text)}
+.mgrid a b,.fpst b{display:block;font:600 var(--t-md)/1.3 var(--sans);margin-bottom:3px} .mgrid a span,.fpst span{font-size:var(--t-sm);color:var(--muted);line-height:1.45}
+.fpst{border-style:dashed} .fpst i{font-style:normal;color:var(--data)}
+
+/* hero */
+#track{position:relative;z-index:5}
+.hero{position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;text-align:center;padding:clamp(100px,16vh,170px) 20px 0}
+.kicker{font:600 var(--t-xs)/1 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:#e9eef5;text-shadow:var(--shadow)}
+.kicker b{color:var(--data);font-weight:600}
+.hero h1{font-family:var(--display);color:#fff;margin:26px 0 20px;width:min(1180px,92vw);line-height:1;text-shadow:0 2px 30px rgba(0,0,0,.35)}
+.hero h1 .fit{display:block;white-space:nowrap;letter-spacing:-.01em}
+.hero h1 .l1{font-weight:500} .hero h1 .l2{font-weight:900;color:#fff1da;margin-top:.1em}
+.hero .lead{font-size:var(--t-lg);line-height:1.45;color:#f1f4f8;max-width:560px;text-shadow:var(--shadow)}
+.cta{display:flex;gap:18px;flex-wrap:wrap;justify-content:center;align-items:center;margin-top:30px}
+.hint{margin-top:20px;font-size:var(--t-sm);color:#e2e8f0;text-shadow:var(--shadow)}
+
+/* true-position markers */
+.mk{position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;min-height:44px;padding:0 10px;white-space:nowrap;transition:opacity .5s}
+.mk i{width:9px;height:9px;border-radius:50%;box-shadow:0 0 12px currentColor}
+.mk b{font:700 var(--t-sm)/1 var(--display);letter-spacing:.08em;text-transform:uppercase}
+.mk span{font-size:var(--t-xs);color:var(--muted);font-variant-numeric:tabular-nums}
+.mk.dim{opacity:0;pointer-events:none}
+
+/* the words, set straight over the image */
+#panel{position:fixed;left:max(28px,6vw);top:50%;width:min(520px,40vw);z-index:14;transform:translateY(calc(-50% + 18px));opacity:0;pointer-events:none;transition:opacity .45s,transform .6s cubic-bezier(.2,.7,.2,1);text-shadow:var(--shadow)}
+#panel.on{opacity:1;transform:translateY(-50%);pointer-events:auto}
+#panel .kick{display:block;font:600 var(--t-xs)/1.4 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:#d4dce7}
+#panel h2{font:900 clamp(56px,7.4vw,124px)/.92 var(--display);letter-spacing:-.01em;margin:10px 0 16px;color:#fff}
+#panel .one{font-size:var(--t-lg);line-height:1.5;color:#f0f4f8;max-width:30em}
+#panel .nums{display:flex;flex-wrap:wrap;gap:12px 30px;margin:22px 0 4px}
+#panel .nums div{display:grid;gap:3px}
+#panel .nums b{font:600 var(--t-lg)/1.1 var(--sans);color:var(--data);font-variant-numeric:tabular-nums}
+#panel .nums small{font:600 var(--t-xs)/1.2 var(--sans);letter-spacing:.12em;text-transform:uppercase;color:#c3cddb}
+#panel .fact{margin-top:14px;font-size:var(--t-sm);color:#dce3ec;max-width:34em}
+#panel .fact b{color:var(--data)}
+#panel .rule{width:64px;height:1px;background:rgba(255,255,255,.45);margin:24px 0 18px}
+#panel .ft{font-size:var(--t-md);color:#f0f4f8;margin-bottom:16px;max-width:30em}
+#panel .ft span{display:block;font:600 var(--t-xs)/1.4 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:#d4dce7;margin-bottom:4px}
+#panel .acts{display:flex;gap:10px 18px;flex-wrap:wrap;align-items:center}
+#panel .pmin{position:absolute;right:0;top:-56px;min-height:44px;padding:0 12px;border-radius:var(--r1);font:600 var(--t-xs)/1 var(--sans);letter-spacing:.12em;text-transform:uppercase;color:#d4dce7}
+#panel .pmin:hover{background:rgba(255,255,255,.06)}
+#panel .more{display:none}
+#panelPill{position:fixed;left:max(28px,6vw);top:50%;transform:translateY(-50%);z-index:14;display:flex;align-items:center;gap:8px;min-height:44px;padding:0 18px;border-radius:999px;border:1px solid var(--line2);background:rgba(2,3,8,.6);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);font:600 var(--t-sm)/1 var(--sans);opacity:0;pointer-events:none;transition:opacity .35s}
+#panelPill.on{opacity:1;pointer-events:auto}
+#panelPill i{width:10px;height:10px;border-radius:50%} #panelPill span{color:var(--muted);font-weight:500}
+
+/* narration: subtitles */
+.say{position:absolute;left:0;right:0;text-align:center;padding:0 10vw;font:400 clamp(24px,3vw,40px)/1.3 var(--sans);color:#f0f4f8;opacity:0;transform:translateY(16px);transition:opacity 1.2s,transform 1.2s;text-shadow:var(--shadow)}
+.say.in{opacity:1;transform:none}
+.say b{color:#fff;font-weight:700}
+.say small{display:block;margin-top:12px;font:600 var(--t-xs)/1.3 var(--sans);letter-spacing:.2em;color:var(--muted);text-transform:uppercase}
+.fly{position:absolute;left:0;right:0;text-align:center;padding:0 12vw;opacity:0;transition:opacity 1s}
+.fly.in{opacity:1}
+body.docked .mk,body.docked .fly,body.docked .say{opacity:0!important;pointer-events:none}
+.fly i{display:inline-block;width:8px;height:8px;border-radius:50%;box-shadow:0 0 12px currentColor;margin-right:10px;vertical-align:2px}
+.fly b{font:600 var(--t-xs)/1.3 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:#fff}
+.fly span{display:block;margin:8px auto 0;max-width:34em;font-size:var(--t-md);color:#d4dce7}
+
+/* ending */
+.endnote{position:absolute;left:0;right:0;text-align:center;padding:0 8vw}
+.endnote .kick{display:block;font:600 var(--t-xs)/1.4 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+.endnote h2{font:900 clamp(34px,5.6vw,84px)/1.02 var(--display);margin:14px 0 18px}
+.endnote p{max-width:620px;margin:0 auto;color:#e2e8f0;font-size:var(--t-lg);line-height:1.5}
+.endnote p b{color:var(--data)}
+
+/* bottom: readout · next · timeline */
+#hud{position:fixed;left:max(28px,6vw);right:max(28px,6vw);bottom:46px;z-index:16;display:flex;align-items:flex-end;justify-content:space-between;gap:20px;opacity:0;transition:opacity .5s;pointer-events:none;text-shadow:var(--shadow)}
+#hud.on{opacity:1} #hud.on #hNext{pointer-events:auto}
+#hud .read{display:grid;gap:2px;min-width:0}
+#hDist{font:700 var(--t-xl)/1.1 var(--sans);color:var(--data);font-variant-numeric:tabular-nums;white-space:nowrap}
+#hLight{font-size:var(--t-sm);color:#d4dce7;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#hNext{min-height:48px;padding:0 4px;text-align:right;font:600 var(--t-md)/1.25 var(--sans);color:#fff}
+#hNext small{display:block;font:600 var(--t-xs)/1.4 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+#hNext:hover{color:var(--action)}
+#speed{position:fixed;left:max(28px,6vw);bottom:120px;z-index:16;font:700 var(--t-sm)/1 var(--sans);letter-spacing:.06em;color:#ffd9a0;opacity:0;transition:opacity .25s;pointer-events:none;text-shadow:var(--shadow);font-variant-numeric:tabular-nums}
+#speed.on{opacity:1}
+#tl{position:fixed;left:max(28px,6vw);right:max(28px,6vw);bottom:0;height:40px;z-index:17;opacity:0;transition:opacity .5s;pointer-events:none}
+#tl.on{opacity:1;pointer-events:auto}
+#tl .bar{position:absolute;left:0;right:0;top:19px;height:2px;background:rgba(255,255,255,.14);border-radius:2px;overflow:hidden}
+#tl .bar i{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(90deg,#ffb547,var(--data))}
+#tlTicks button{position:absolute;top:-2px;width:44px;height:44px;margin-left:-22px;display:flex;align-items:center;justify-content:center}
+#tlTicks i{width:8px;height:8px;border-radius:50%;box-shadow:0 0 0 2px var(--bg)}
+#tlTicks span{position:absolute;bottom:40px;left:50%;transform:translateX(-50%);font:600 var(--t-xs)/1 var(--sans);letter-spacing:.12em;text-transform:uppercase;color:#fff;white-space:nowrap;opacity:0;transition:opacity .2s;pointer-events:none;text-shadow:var(--shadow)}
+#tlTicks button:hover span,#tlTicks button:focus-visible span{opacity:1}
+#tlTicks button.cur i{box-shadow:0 0 0 2px var(--bg),0 0 0 4px #fff}
+
+#credits{position:relative;z-index:6;border-top:1px solid var(--line);background:var(--bg)}
+#credits .wrap{max-width:1100px;margin:0 auto;padding:26px 24px 110px;display:flex;gap:20px;align-items:flex-start;font-size:var(--t-xs);color:var(--muted);line-height:1.6}
+#credits a{color:#bcd3e8}
+
+@media (max-width:1100px){ #panel{width:min(460px,46vw)} }
+/* phones (portrait): planet up top, words below */
+@media (max-width:820px){
+  #nav{padding:8px 12px;gap:6px} .logo{font-size:15px} #menuBtn span{display:none} .launch{padding:0 14px}
+  .hero{padding:96px 18px 0} .hero h1{width:calc(100vw - 36px);margin:22px 0 16px} .hero .lead{font-size:var(--t-md)}
+  .cta{gap:10px}
+  .mgrid{grid-template-columns:1fr;gap:16px} .mwrap{padding:16px 14px 30px}
+  .mk{display:none}
+  #panel{left:18px;right:18px;width:auto;top:auto;bottom:118px;transform:translateY(16px)}
+  #panel.on{transform:none}
+  #panel h2{font-size:clamp(40px,12vw,60px);margin:6px 0 10px}
+  #panel .one{font-size:var(--t-md)}
+  #panel:not(.full) .one{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  #panel:not(.full) .nums,#panel:not(.full) .fact,#panel:not(.full) .ft,#panel:not(.full) .rule{display:none}
+  #panel.full{background:rgba(2,3,8,.82);padding:14px;margin:-14px;border-radius:var(--r2);max-height:62vh;overflow:auto;backdrop-filter:blur(10px)}
+  #panel .acts{margin-top:14px}
+  #panel .more{display:inline-flex;align-items:center;min-height:44px;margin-top:2px;font:600 var(--t-sm)/1 var(--sans);color:#d4dce7;text-decoration:underline;text-underline-offset:5px}
+  #panel.full .more::after{content:' ▴'} #panel:not(.full) .more::after{content:' ▾'}
+  #panel .pmin{top:-48px}
+  #panelPill{left:18px;top:auto;bottom:118px;transform:none}
+  .say{padding:0 22px;font-size:24px} .fly{padding:0 22px}
+  .endnote{padding:0 18px}
+  #hud{left:18px;right:18px;bottom:44px}
+  #hDist{font-size:var(--t-lg)} #hLight{font-size:var(--t-xs)} #hNext{font-size:var(--t-sm);max-width:46%}
+  #speed{left:18px;bottom:100px}
+  #tl{left:18px;right:18px;pointer-events:none} #tlTicks button{pointer-events:none}
+  .scrim-b{height:300px}
+  #credits .wrap{flex-direction:column}
+}
+/* phones (landscape) */
+@media (orientation:landscape) and (max-height:500px){
+  #nav{padding:4px 14px}
+  .hero{padding:56px 20px 0} .hero h1{margin:10px 0 8px;width:min(720px,80vw)} .hero .lead{font-size:var(--t-sm)} .cta{margin-top:10px} .hint{display:none}
+  .mk{display:flex}
+  #panel{left:24px;width:min(400px,52vw);top:52%} #panel h2{font-size:44px;margin:4px 0 8px}
+  #panel .one{font-size:var(--t-sm)} #panel .nums,#panel .fact,#panel .rule,#panel .ft{display:none} #panel .acts{margin-top:10px}
+  #panel .pmin{top:-46px}
+  #panelPill{left:24px}
+  #hud{bottom:36px} #hDist{font-size:var(--t-lg)} #speed{bottom:86px}
+  .scrim-b{height:150px}
+}
+@media (prefers-reduced-motion:reduce){ .say,.fly,#panel{transition:none} .say,.fly{opacity:1;transform:none} .fx-grain{animation:none} }
+</style>
+<style>@view-transition{navigation:auto}::view-transition-old(root),::view-transition-new(root){animation-duration:.28s}</style>
+<script type="speculationrules">{"prefetch":[{"source":"document","where":{"href_matches":"*.html"},"eagerness":"moderate"}]}</script>
+<script src="perf.js" defer></script>
+<script src="chat.js" defer></script>
+</head>
+<body>
+<canvas id="space" aria-hidden="true"></canvas>
+<div id="sunGlow" aria-hidden="true"><div class="sunwrap"><i class="corona"></i><canvas id="sunDisk" width="1152" height="1152"></canvas></div></div>
+<div id="stage" aria-hidden="true"></div>
+<div class="fx-vig" aria-hidden="true"></div><div class="fx-grain" aria-hidden="true"></div><div class="scrim-b" aria-hidden="true"></div>
+
+<header id="nav">
+  <a class="logo" href="#top" data-go="0"><svg width="22" height="22" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="5" fill="#ffb547"/><ellipse cx="14" cy="14" rx="12.5" ry="5" fill="none" stroke="#5fd8ff" stroke-width="1.4" transform="rotate(-25 14 14)"/></svg>StarSet</a>
+  <button id="menuBtn" aria-haspopup="dialog" aria-controls="menu"><b aria-hidden="true">☰</b><span>Explore</span></button>
+  <a class="launch" href="simulation.html">Launch 3D</a>
+</header>
+
+<div id="menu" role="dialog" aria-modal="true" aria-label="All StarSet features" hidden>
+  <div class="mwrap">
+    <div class="mtop"><span>Explore StarSet</span><button id="menuClose" aria-label="Close menu">✕</button></div>
+    <div class="mgrid">
+      <section><h4>Explore the Solar System</h4>
+        <a href="simulation.html"><b>🪐 3D Solar System</b><span>Every planet, moon, comet and spacecraft at today’s position. Search, speed up time, follow Voyager.</span></a>
+        <a href="simulation.html#truescale"><b>📏 True scale mode</b><span>Real sizes and real distances. Travel at light speed — or by car.</span></a>
+        <a href="simulation.html#tours"><b>🗣 Guided tours</b><span>Five narrated tours, in English, हिन्दी, मराठी and मारवाड़ी, with voice.</span></a>
+        <a href="simulation.html#quiz"><b>🏆 Space quiz</b><span>Ten questions; each answer flies you to the planet.</span></a>
+      </section>
+      <section><h4>Look up at the sky</h4>
+        <a href="sky.html"><b>✨ Tonight’s sky</b><span>Stellarium-style live sky for your city, with phone compass.</span></a>
+        <a href="sky.html#panchang"><b>🪔 Panchang in the sky</b><span>Tithi, nakshatra and rashi drawn on the real sky; next Purnima, Ekadashi, Sankranti.</span></a>
+        <a href="eclipse.html"><b>🌒 Eclipse twin view</b><span>The shadow on the globe and the view from your city, minute by minute.</span></a>
+        <a href="story.html"><b>🖼 Your sky story</b><span>A printable poster of the sky on any date — birthday, wedding, launch.</span></a>
+      </section>
+      <section><h4>Feel the size of space</h4>
+        <a href="#top" data-go="0" class="here"><b>🌅 Scroll to Neptune</b><span>This page: the Solar System at true distance. Start from the Sun.</span></a>
+        <a href="scale.html"><b>🏙 Solar system on your street</b><span>Put the Sun on your building and walk to the planets.</span></a>
+        <a href="light.html"><b>✉ Light-time messages</b><span>Send a message at light speed and watch it cross the Solar System.</span></a>
+        <a href="earth.html"><b>🌍 Earth explorer</b><span>A Google Earth-style globe, from orbit down to street level.</span></a>
+      </section>
+      <section><h4>About</h4>
+        <a href="about.html"><b>🛠 How StarSet is built</b><span>The case study: requirements, architecture, data and accuracy checks.</span></a>
+        <button id="fpsToggle" class="fpst"><b>📈 FPS meter: <i id="fpsState">off</i></b><span>Show a live frame-rate counter on every StarSet page, to check smoothness on your device.</span></button>
+      </section>
+    </div>
+  </div>
+</div>
+
+<main id="track">
+  <!-- the Sun / hero -->
+  <section id="top" class="hero">
+    <span class="kicker">Scale model · 1 screen ≈ <b id="kmPerScreen">136 million km</b></span>
+    <h1><span class="fit l1">Start scrolling.</span><span class="fit l2">Next stop, Neptune.</span></h1>
+    <p class="lead">The Solar System at true distance. Scroll to travel.</p>
+    <div class="cta"><button class="btn primary" data-go="mercury">Start the journey ↓</button><a class="tlink" href="simulation.html">Open the 3D model →</a></div>
+    <p class="hint">Scroll or swipe — every planet is exactly as far down the page as it is in space.</p>
+  </section>
+</main>
+
+<nav id="tl" aria-label="Journey timeline"><div class="bar"><i id="tlFill"></i></div><div id="tlTicks"></div></nav>
+<aside id="panel" aria-live="polite"></aside>
+<button id="panelPill" aria-label="Show planet info"></button>
+
+<div id="hud" aria-live="off">
+  <div class="read"><b id="hDist">0 km</b><span id="hLight">from the Sun</span></div>
+  <button id="hNext"><small>Next stop</small>Mercury ↓</button>
+</div>
+<div id="speed" aria-hidden="true"></div>
+
+<footer id="credits"><div class="wrap">
+  <a class="logo" href="#top" data-go="0"><svg width="22" height="22" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="5" fill="#ffb547"/><ellipse cx="14" cy="14" rx="12.5" ry="5" fill="none" stroke="#5fd8ff" stroke-width="1.4" transform="rotate(-25 14 14)"/></svg>StarSet</a>
+  <span>Planet data: <a href="https://nssdc.gsfc.nasa.gov/planetary/factsheet/" target="_blank" rel="noopener">NASA Planetary Fact Sheet</a>. Planet textures: <a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noopener">Solar System Scope</a> (CC BY 4.0), based on NASA mission imagery. City lights: NASA. Milky Way panorama: ESO/S. Brunier (CC BY 4.0). Moon maps via the Celestia project (CC BY / BY-SA / CC0). Star catalogue: d3-celestial (BSD). Positions: Astronomy Engine (MIT). Distances on this page are to scale; planet sizes are enlarged so you can see them.</span>
+</div></footer>
+
+<script src="textures.js"></script>
+<script>
+/* ===================== globes — software sphere renderer ===================== */
+const TAU=Math.PI*2, sst=(a,b,x)=>{x=Math.min(1,Math.max(0,(x-a)/(b-a)));return x*x*(3-2*x);};
+class Globe{
+  constructor(cv,o){
+    this.cv=cv; this.ctx=cv.getContext('2d'); this.S=cv.width;
+    Object.assign(this,{tilt:0,light:[-.62,.36,.7],ambient:.04,atmo:null,ringR:null,ringOpen:24,emissive:false,ext:null},o);
+    this.rot=0; this.cloudRot=0; this.img=this.ctx.createImageData(this.S,this.S); this.pre();
+  }
+  pre(){
+    const S=this.S, ext=this.ext||(this.ringR?this.ringR[1]*1.02:1.04), R=S/2/ext, N=S*S;
+    const A=this.A={kind:new Uint8Array(N),lat:new Float32Array(N),lon:new Float32Array(N),sh:new Float32Array(N),z:new Float32Array(N),edge:new Float32Array(N),ru:new Float32Array(N),rsh:new Float32Array(N),pr:new Float32Array(N).fill(-1)};
+    let [lx,ly,lz]=this.light; const ll=Math.hypot(lx,ly,lz); lx/=ll; ly/=ll; lz/=ll;
+    const ct=Math.cos(this.tilt), st=Math.sin(this.tilt);
+    const Lx=lx*ct+ly*st, Ly=-lx*st+ly*ct, Lz=lz;              // light in the planet's (tilted) frame
+    const ob=this.ringOpen*Math.PI/180, n1=Math.cos(ob), n2=Math.sin(ob);
+    for(let j=0;j<S;j++) for(let i=0;i<S;i++){
+      const k=j*S+i, X=(i+.5-S/2)/R, Y=-(j+.5-S/2)/R, Xa=X*ct+Y*st, Ya=-X*st+Y*ct, r=Math.hypot(X,Y);
+      let kind=0, Z=0;
+      if(r<1+1.2/R){
+        kind=1; const f=r>.99999?.99999/r:1, Xs=Xa*f, Ys=Ya*f; Z=Math.sqrt(Math.max(0,1-(Xs*Xs+Ys*Ys)));
+        A.lat[k]=Math.asin(Math.max(-1,Math.min(1,Ys))); A.lon[k]=Math.atan2(Xs,Z); A.z[k]=Z;
+        A.sh[k]=Xs*Lx+Ys*Ly+Z*Lz; A.edge[k]=Math.min(1,Math.max(0,(1-r)*R+.6));
+        if(this.ringR){ const ln=Ly*n1+Lz*n2; if(Math.abs(ln)>1e-4){ const sd=-(Ys*n1+Z*n2)/ln;
+          if(sd>0){ const qx=Xs+sd*Lx, qy=Ys+sd*Ly, qz=Z+sd*Lz, qr=Math.hypot(qx,qy,qz);
+            if(qr>this.ringR[0]&&qr<this.ringR[1]) A.pr[k]=(qr-this.ringR[0])/(this.ringR[1]-this.ringR[0]); } } }
+      }
+      if(this.ringR){
+        const zr=-Ya*n1/n2, rr=Math.hypot(Xa,Ya,zr);
+        if(rr>this.ringR[0]&&rr<this.ringR[1] && (!(kind&&A.edge[k]>.5) || zr>Z)){
+          kind|=2; A.ru[k]=(rr-this.ringR[0])/(this.ringR[1]-this.ringR[0]);
+          const b=Xa*Lx+Ya*Ly+zr*Lz, c=rr*rr-1, disc=b*b-c;     // is the sun hidden behind the planet?
+          A.rsh[k]=(disc>0 && -b+Math.sqrt(disc)>0)?.1:1;
+        }
+      }
+      A.kind[k]=kind;
+    }
+  }
+  ringA(u){ const d=this.ring.data, W=this.ring.width, i=((u*(W-1))|0)*4; return d[i+3]/255; }
+  draw(){
+    const T=this.tex; if(!T) return;
+    const md=T.map.data, W=T.map.width, H=T.map.height, cd=T.clouds&&T.clouds.data, cW=T.clouds&&T.clouds.width, cH=T.clouds&&T.clouds.height;
+    const nd=T.night&&T.night.data, nW=T.night&&T.night.width, nH=T.night&&T.night.height;
+    const out=this.img.data, A=this.A, N=this.S*this.S, rot=this.rot, crot=this.cloudRot, atmo=this.atmo, em=this.emissive;
+    const rg=this.ring&&this.ring.data, RW=this.ring&&this.ring.width;
+    for(let k=0;k<N;k++){
+      const kd=A.kind[k], o=k*4; if(!kd){ out[o+3]=0; continue; }
+      let r=0,g=0,b=0,a=0;
+      if(kd&1){
+        const base=A.lon[k]/TAU+.5, v=.5-A.lat[k]/Math.PI;
+        let u=(base+rot)%1; if(u<0)u+=1;
+        const ti=((Math.min(H-1,(v*H)|0))*W+((u*W)|0))*4; r=md[ti]; g=md[ti+1]; b=md[ti+2];
+        let L; const d=A.sh[k];
+        if(em){ L=.5+.65*Math.pow(A.z[k],.45); }
+        else { L=this.ambient+Math.max(0,d)*1.08; if(A.pr[k]>=0) L*=1-this.ringA(A.pr[k])*.8; }
+        if(cd){ let uc=(base+crot)%1; if(uc<0)uc+=1; const ci=((Math.min(cH-1,(v*cH)|0))*cW+((uc*cW)|0))*4, ca=cd[ci]/255;
+          r+=(255-r)*ca; g+=(255-g)*ca; b+=(255-b)*ca; }
+        r*=L; g*=L; b*=L;
+        if(nd){ const nk=sst(.08,-.22,d); if(nk>0){ const ni=((Math.min(nH-1,(v*nH)|0))*nW+((u*nW)|0))*4; const cl=cd?1-cd[((Math.min(cH-1,(v*cH)|0))*cW+((((base+crot)%1+1)%1*cW)|0))*4]/255*.7:1;
+          r+=nd[ni]*nk*1.3*cl; g+=nd[ni+1]*nk*1.3*cl; b+=nd[ni+2]*nk*1.3*cl; } }
+        if(atmo){ const f=Math.pow(1-A.z[k],2.2)*(.15+Math.max(0,d+.3)*1.1); r+=atmo[0]*f; g+=atmo[1]*f; b+=atmo[2]*f; }
+        a=A.edge[k];
+      }
+      if(kd&2){
+        const ri=((A.ru[k]*(RW-1))|0)*4, ra=rg[ri+3]/255*.95, sh=A.rsh[k];
+        const oa=ra+a*(1-ra);
+        if(oa>0){ r=(rg[ri]*sh*ra+r*a*(1-ra))/oa; g=(rg[ri+1]*sh*ra+g*a*(1-ra))/oa; b=(rg[ri+2]*sh*ra+b*a*(1-ra))/oa; }
+        a=oa;
+      }
+      out[o]=r; out[o+1]=g; out[o+2]=b; out[o+3]=a*255;
+    }
+    this.ctx.putImageData(this.img,0,0);
+  }
+}
+
+/* texture loading: real maps from tex/, generated fallback (and Venus cloud deck) from textures.js */
+const imgCache={};
+function loadImage(src){ return imgCache[src]||(imgCache[src]=new Promise(res=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=()=>res(null); im.src=src; })); }
+function toData(src,w,h){ if(!src) return null; const c=document.createElement('canvas'); c.width=w; c.height=h||w/2; const x=c.getContext('2d',{willReadFrequently:true}); x.drawImage(src,0,0,c.width,c.height);
+  try{ return x.getImageData(0,0,c.width,c.height); }catch(e){ return null; } }
+const genCache={};
+const gen=(k,w=512)=>genCache[k+w]||(genCache[k+w]=StarTex.generate(k,w));
+async function textureFor(key,w){
+  if(key==='venus') return {map:toData(gen('venus').map,w)};
+  const real=REAL_KEYS.has(key)? toData(await loadImage('tex/'+key+'.jpg'),w) : MOON_KEYS.has(key)? toData(await loadImage('tex/moons/'+key+'.jpg'),w) : null;
+  if(real&&key==='titan'){ const d=real.data; for(let i=0;i<d.length;i+=4){ const v=(d[i]+d[i+1]+d[i+2])/3; d[i]=200+v*.12; d[i+1]=135+v*.1; d[i+2]=58+v*.06; } } // seen through its orange haze
+  if(real&&key==='phobos'){ const d=real.data; for(let i=0;i<d.length;i+=4){ d[i]=Math.min(255,d[i]*1.7); d[i+1]=Math.min(255,d[i+1]*1.7); d[i+2]=Math.min(255,d[i+2]*1.7); } }
+  if(real){ const T={map:real};
+    if(key==='earth'){ T.clouds=toData(await loadImage('tex/earth_clouds.jpg'),w); T.night=toData(await loadImage('tex/earth_night.jpg'),w); }
+    return T; }
+  const G=gen(key); const T={map:toData(G.map,w)}; if(G.clouds) T.clouds=toData(G.clouds,w); if(G.night) T.night=toData(G.night,w); return T;
+}
+async function ringFor(key){
+  if(key==='saturn'){ const d=toData(await loadImage('tex/saturn_ring.png'),1024,4); if(d) return {data:d,r:[1.12,2.27]}; }
+  const d=toData(StarTex.ring(key),1024,4);
+  if(d&&key==='uranus'){ // thin rings alias at card size: spread them a little
+    const W=1024, src=new Float32Array(W); for(let x=0;x<W;x++) src[x]=d.data[x*4+3];
+    for(let x=0;x<W;x++){ let m=0; for(let k=-7;k<=7;k++){ const v=src[Math.min(W-1,Math.max(0,x+k))]; if(v>m) m=v*(1-Math.abs(k)/9); }
+      for(let y=0;y<4;y++) d.data[(y*W+x)*4+3]=Math.min(255,m*.8); } }
+  return {data:d, r:StarTex.ringRadii[key]};
+}
+
+const CARD_OPTS={ sun:{emissive:true,spin:.02}, mercury:{spin:.025}, venus:{atmo:[70,55,20],spin:-.012},
+  earth:{tilt:-.41,atmo:[50,100,210],spin:.05,clouds:true}, moon:{spin:.012}, mars:{tilt:-.44,atmo:[60,30,15],spin:.045},
+  jupiter:{tilt:-.05,spin:.08}, saturn:{tilt:-.42,spin:.07,ring:true,ringOpen:22}, uranus:{tilt:-1.7,spin:-.05,atmo:[40,90,100]},
+  neptune:{tilt:-.5,spin:.05,atmo:[30,50,140]},
+  phobos:{spin:.05}, io:{spin:.04}, europa:{spin:.03}, ganymede:{spin:.03}, titan:{spin:.02,atmo:[120,70,10]}, enceladus:{spin:.04}, miranda:{tilt:-1.5,spin:.04}, triton:{tilt:.3,spin:-.03,atmo:[30,30,40]},
+  ceres:{spin:.06}, pluto:{tilt:-.3,spin:-.02}, eris:{spin:.015}, haumea:{spin:.16}, makemake:{spin:.04} };
+const REAL_KEYS=new Set(['sun','mercury','earth','moon','mars','jupiter','saturn','uranus','neptune']);
+const MOON_KEYS=new Set(['io','ganymede','titan','triton','phobos','miranda']);
+
+const CARD_COL={haumea:'#d7d9dc',makemake:'#c98d62',eris:'#e6e6e2',mercury:'#a9a39b',venus:'#e3c27a',earth:'#4f8fd8',mars:'#c8643c',ceres:'#9a968f',jupiter:'#d6a77a',saturn:'#e6cf96',uranus:'#9fdbe3',neptune:'#4a6fe0',pluto:'#d8b48a'};
+
+/* ===================== THE JOURNEY — cinematic =====================
+   A true-distance model: 1 AU = U pixels of scrolling. The small markers sit at each world's real distance;
+   the big image is the camera's view of whatever you're passing. */
+const AU_KM=149597870.7, C_KMS=299792.458, END_AU=71.5;
+const $=id=>document.getElementById(id);
+const BTN={mercury:'Open Tonight’s Sky',venus:'Make your poster',earth:'Open Panchang sky',mars:'Open street scale',ceres:'Start the quiz',jupiter:'Launch the 3D model',saturn:'Open True Scale',
+  uranus:'Choose a language',neptune:'Send a message',pluto:'Read the case study',haumea:'See Haumea in 3D',makemake:'See Makemake in 3D',eris:'See Eris in 3D'};
+const MORE_BTN={'Earth explorer':'Earth explorer','Eclipse twin view':'Eclipse view'};
+const fmtShort=s=>{ if(s<60) return Math.round(s)+'s'; if(s<3600) return Math.floor(s/60)+'m '+String(Math.round(s%60)).padStart(2,'0')+'s'; return Math.floor(s/3600)+'h '+Math.round(s%3600/60)+'m'; };
+const STOPS=[
+ {key:'mercury',name:'Mercury',a:.387,px:105,one:'The smallest planet, baked on one side and frozen on the other. It whips round the Sun every 88 days.',
+  stats:[['Diameter','4,879 km'],['Year','88 days'],['Sunrise to sunrise','176 days']],
+  feat:{t:'Tonight’s sky',h:'What’s above you right now?',p:'Mercury only peeks out in twilight. See exactly what’s over your city tonight — planets, Moon phase, 88 constellations, even with your phone’s compass.',href:'sky.html',go:'OPEN THE SKY →'}},
+ {key:'venus',name:'Venus',a:.723,px:145,flip:1,one:'Earth’s twin in size, but the hottest planet of all — 464 °C under clouds of sulphuric acid. It also spins backwards.',
+  stats:[['Diameter','12,104 km'],['Year','225 days'],['Surface','464 °C']],
+  feat:{t:'Your sky story',h:'A poster of the sky on your day',p:'Venus was probably shining on your birthday. Pick a date, time and place — get the exact stars, planets, Moon phase and Panchang of that moment, ready to print.',href:'story.html',go:'MAKE A POSTER →'}},
+ {key:'earth',name:'Earth',a:1,px:160,one:'Home. The only place we know of with life and liquid oceans. Sunlight you see today left the Sun 8 minutes 20 seconds ago.',
+  stats:[['Diameter','12,756 km'],['Year','365.25 days'],['Moon','1']],
+  feat:{t:'Panchang in the real sky',h:'See tithi and nakshatra overhead',p:'The 27 nakshatras and 12 rashis drawn on tonight’s actual sky, with a Sun→Moon arc that shows why today is the tithi it is. Jump to the next Purnima, Ekadashi or Sankranti.',href:'sky.html#panchang',go:'OPEN PANCHANG →'},
+  more:[{t:'Earth explorer',h:'From orbit to your street',href:'earth.html'},{t:'Eclipse twin view',h:'The shadow and your view, together',href:'eclipse.html'}], moon:true},
+ {key:'mars',name:'Mars',a:1.524,px:125,flip:1,one:'The red planet: rusty dust, the tallest volcano in the Solar System and a canyon as long as India.',
+  stats:[['Diameter','6,792 km'],['Year','687 days'],['Moons','2']],
+  feat:{t:'Solar system on your street',h:'Put the Sun on your building',p:'If the Sun were a football at Gateway of India, Mars would be a mustard seed 37 m away. Drag the Sun anywhere on a real map and walk the planets.',href:'scale.html',go:'SHRINK SPACE →'},
+  fact:'India’s Mangalyaan reached Mars orbit on its very first try, on 24 September 2014.'},
+ {key:'ceres',name:'Ceres',a:2.77,px:110,one:'The biggest thing in the asteroid belt — a dwarf planet 939 km wide, possibly hiding salty water under its crust.',
+  stats:[['Diameter','939 km'],['Year','4.6 years'],['Found','1801']],
+  feat:{t:'Space quiz',h:'Think you know space?',p:'Ten questions, shuffled every time. Each answer flies you to the planet it’s about. Earn your rank from Ground Crew Trainee to Flight Director.',href:'simulation.html#quiz',go:'START THE QUIZ →'},
+  fact:'The whole asteroid belt together weighs only about 3% of our Moon.'},
+ {key:'jupiter',name:'Jupiter',a:5.203,px:340,flip:1,one:'King of the planets: more than twice as massive as all the others put together. Its Great Red Spot is a storm wider than Earth.',
+  stats:[['Diameter','142,984 km'],['Year','11.9 years'],['Moons','95+']],
+  feat:{t:'Mission control · 3D',h:'Fly the whole Solar System',p:'Every planet, moon, comet and spacecraft at today’s real position. Speed up time, rewind it, follow Voyager, or take a guided tour.',href:'simulation.html',go:'LAUNCH 3D →'}},
+ {key:'saturn',name:'Saturn',a:9.537,px:420,one:'Those rings are billions of chunks of ice, yet mostly only tens of metres thick. Saturn itself would float in a big enough bathtub.',
+  stats:[['Diameter','120,536 km'],['Year','29.5 years'],['Moons','274']],
+  feat:{t:'True scale mode',h:'Every size and distance real, 1 : 1',p:'Fly between the planets at the speed of light — or a car — inside the 3D model, at their real sizes. Earth becomes a pixel faster than you’d think.',href:'simulation.html#truescale',go:'TRY TRUE SCALE →'}},
+ {key:'uranus',name:'Uranus',a:19.19,px:260,flip:1,one:'An ice giant knocked onto its side. Each pole gets 42 years of daylight, then 42 years of night.',
+  stats:[['Diameter','51,118 km'],['Year','84 years'],['Tilt','98°']],
+  feat:{t:'Your language',h:'Tours in हिन्दी, मराठी, मारवाड़ी',p:'The Grand Tour, Seasons and Hidden Oceans, written in Hindi, Marathi and Marwari — with a Listen button that reads each stop aloud.',href:'simulation.html#tours',go:'CHOOSE A LANGUAGE →'}},
+ {key:'neptune',name:'Neptune',a:30.07,px:255,one:'The windiest world — over 2,000 km/h. It was found with maths in 1846, before anyone had seen it.',
+  stats:[['Diameter','49,528 km'],['Year','165 years'],['Light from Sun','4 h 10 min']],
+  feat:{t:'Light-time messages',h:'Send a message at light speed',p:'Type a note and watch it pass the Moon in 1.3 seconds, Neptune in about four hours, and Voyager in a day. See how far light from the year you were born has travelled.',href:'light.html',go:'SEND ONE →'}},
+ {key:'pluto',name:'Pluto',a:39.48,px:120,flip:1,one:'A frozen dwarf world with a giant heart-shaped plain of nitrogen ice, out in the Kuiper Belt.',
+  stats:[['Diameter','2,377 km'],['Year','248 years'],['Moons','5']],
+  feat:{t:'How StarSet is built',h:'The case study',p:'Goals, requirements, architecture, data licences and the accuracy checks behind every number on this page.',href:'about.html',go:'READ IT →'},
+  fact:'New Horizons took 9½ years to get here and flew past in July 2015.'},
+ {key:'haumea',name:'Haumea',a:42.96,px:150,one:'A dwarf planet spinning so fast — one day lasts under 4 hours — that it has stretched into an egg shape. It even has a thin ring.',
+  stats:[['Size','≈ 2,322 × 1,026 km'],['Year','≈ 282 years'],['Day','3.9 hours']],
+  feat:{t:'See it in 3D',h:'Spin the egg-shaped world',p:'Haumea in the 3D model, at its real position today — with its two moons, Hiʻiaka and Namaka.',href:'simulation.html#haumea',go:'OPEN HAUMEA →'},
+  fact:'Its ring, found in 2017, was the first ever discovered around a Kuiper Belt object.'},
+ {key:'makemake',name:'Makemake',a:45.50,px:120,flip:1,one:'A reddish-brown world frosted with frozen methane. Found just after Easter 2005, it is named after the creator god of the Rapa Nui people of Easter Island.',
+  stats:[['Diameter','≈ 1,430 km'],['Year','≈ 307 years'],['Moons','1']],
+  feat:{t:'See it in 3D',h:'The Kuiper Belt, up close',p:'Fly out to Makemake, Pluto and Haumea in the 3D model and watch how slowly they crawl around the Sun.',href:'simulation.html#makemake',go:'OPEN MAKEMAKE →'},
+  fact:'After Pluto, it is the second-brightest object in the Kuiper Belt.'},
+ {key:'eris',name:'Eris',a:68.12,px:140,one:'Almost exactly Pluto’s size but 27% heavier. Finding it in 2005 forced astronomers to decide what a “planet” is — and Pluto lost its title in 2006.',
+  stats:[['Diameter','2,326 km'],['Year','≈ 560 years'],['Moons','1 (Dysnomia)']],
+  feat:{t:'See it in 3D',h:'The world that demoted Pluto',p:'Follow Eris’s steeply tilted, stretched orbit in the 3D model. Right now it is near its farthest point — about 96 AU out.',href:'simulation.html#eris',go:'OPEN ERIS →'},
+  fact:'Average distance shown here. Right now Eris is about 96 AU away, and sunlight takes over 13 hours to reach it.'},
+];
+const SAY=[
+ [1.98,'Entering the asteroid belt. Don’t panic —',''],
+ [2.32,'— unlike in the movies, asteroids here are usually <b>hundreds of thousands of km</b> apart.','You could fly through blindfolded'],
+ [3.7,'Still nothing?<br><b>That’s what space is like.</b>','More than 99.99% of it is empty'],
+ [4.4,'Driving a car at 100 km/h, getting this far would take <b>about 750 years</b>.','4.4 AU · 658 million km'],
+ [7.0,'Look back — the Sun is getting <b>smaller</b>.','Its glow shrinks as 1 / distance'],
+ [12.6,'After Saturn, the distances <b>double</b>.<br>Take a deep breath.','Uranus is twice as far as Saturn'],
+ [16,'Sunlight out here is <b>2 hours 13 minutes</b> old.','16 AU'],
+ [22,'Neptune is still <b>about 1.2 billion km</b> away.','Keep going'],
+ [25.2,'Voyager 2 took <b>3½ years</b> to get from Uranus to Neptune.','1986 → 1989'],
+ [32.6,'The Kuiper Belt: <b>hundreds of thousands</b> of small icy worlds.','Comets are born out here'],
+ [51,'Past the main Kuiper Belt, objects get rarer. This is the <b>scattered disc</b>.','Sunlight here is almost 7 hours old'],
+ [59.5,'Radio shows broadcast from Earth take <b>over 8 hours</b> to reach this far.','≈ 60 AU · 9 billion km'],
+];
+let U=900, VH=innerHeight;
+const fmtKm=k=>{ k=Math.abs(k); if(k<1e6) return Math.round(k).toLocaleString('en-US')+' km'; if(k<1e9){ const m=k/1e6; return (m<100?m.toFixed(1):Math.round(m))+' million km'; } return (k/1e9).toFixed(2)+' billion km'; };
+const fmtT=s=>{ if(s<60) return Math.round(s)+' s'; if(s<3600) return Math.floor(s/60)+' min '+String(Math.round(s%60)).padStart(2,'0')+' s'; return Math.floor(s/3600)+' h '+Math.round(s%3600/60)+' min'; };
+
+const FLY=[
+ [.2,'#ffd27a','Parker Solar Probe','Loops between 0.05 and 0.73 AU. At its closest it moves at about 190 km/s — the fastest thing humans have built.'],
+ [35,'#bfe6ff','Halley’s Comet','Near the far end of its 76-year orbit, about 35 AU out. It swings back past Earth in 2061.'],
+ [66.5,'#9fe8b0','New Horizons','The probe that flew past Pluto in 2015, now about 66 AU from the Sun and still sending data.']];
+/* ---------- true-position markers (the honest scale model) + the text overlay for each stop ---------- */
+const track=$('track'), N=STOPS.length;
+STOPS.forEach((s,i)=>{ s.i=i; const lt=s.a*AU_KM/C_KMS;
+  const el=document.createElement('button'); el.className='mk'; el.dataset.go=s.key; el.setAttribute('aria-label',`${s.name}: ${s.a} AU from the Sun`);
+  el.innerHTML=`<i style="background:${CARD_COL[s.key]};color:${CARD_COL[s.key]}"></i><b>${s.name}</b><span>${s.a.toFixed(s.a<10?2:1)} AU · ${fmtShort(lt)}</span>`;
+  track.appendChild(el); s.mk=el;
+  s.html=`<button class="pmin" aria-label="Hide the text">Hide text</button>
+    <span class="kick">Stop ${i+1} of ${N} · ${fmtKm(s.a*AU_KM)} from the Sun</span>
+    <h2>${s.name}</h2>
+    <p class="one">${s.one}</p>
+    <div class="nums">${s.stats.map(([k,v])=>`<div><b>${v}</b><small>${k}</small></div>`).join('')}<div><b>${fmtT(lt)}</b><small>Light from the Sun</small></div></div>
+    ${s.fact?`<p class="fact">${s.fact}</p>`:''}
+    ${s.moon?`<p class="fact">At this scale the Moon is just <b class="mzpx"></b> from Earth. Every Apollo mission happened inside that gap.</p>`:''}
+    <div class="rule"></div>
+    <p class="ft"><span>${s.feat.t}</span>${s.feat.h}</p>
+    <div class="acts"><a class="btn primary" href="${s.feat.href}">${BTN[s.key]||'Open'}</a>${(s.more||[]).map(m=>`<a class="tlink" href="${m.href}">${MORE_BTN[m.t]||m.t} →</a>`).join('')}</div>
+    <button class="more">More about ${s.name}</button>`; });
+FLY.forEach(([a,col,name,txt])=>{ const el=document.createElement('div'); el.className='fly'; el.dataset.a=a; el.innerHTML=`<i style="color:${col};background:${col}"></i><b>Passing · ${name}</b><span>${txt}</span>`; track.appendChild(el); });
+SAY.forEach(([a,t,sm])=>{ const el=document.createElement('p'); el.className='say'; el.innerHTML=t+(sm?`<small>${sm}</small>`:''); el.dataset.a=a; track.appendChild(el); });
+const end=document.createElement('section'); end.className='endnote'; end.id='beyond';
+end.innerHTML=`<span class="kick">${END_AU} AU · the end of the page, not of space</span><h2>You made it.<br>Voyager 1 is still <span id="vgX">2×</span> farther.</h2>
+ <p>Voyager 1 is about <b>173 AU</b> away — nearly a light-day. Reaching it here would take another <b id="vgScreens">—</b> screens. The nearest star? About <b id="pxScreens">—</b>.</p>
+ <div class="cta"><a class="btn primary" href="simulation.html">Open the 3D model</a><a class="tlink" href="simulation.html#truescale">Try True Scale →</a><button class="tlink" data-go="0">↑ Back to the Sun</button></div>`;
+track.appendChild(end);
+
+/* ---------- the overlay text (one stop at a time); can be hidden ---------- */
+const panel=$('panel'); let panelKey=null, panelStop=null;
+let panelMin=false; try{ panelMin=localStorage.getItem('starset.panelMin')==='1'; }catch(e){}
+const pill=$('panelPill');
+function setMin(v){ panelMin=v; try{ localStorage.setItem('starset.panelMin',v?'1':'0'); }catch(e){} showPanel(); }
+function showPanel(){ const s=panelStop; document.body.classList.toggle('docked',!!s); panel.classList.toggle('on',!!s&&!panelMin); pill.classList.toggle('on',!!s&&panelMin);
+  if(s) pill.innerHTML=`<i style="background:${CARD_COL[s.key]||'#ccc'}"></i>${s.name} <span>· Show info</span>`; }
+pill.onclick=()=>setMin(false);
+panel.addEventListener('click',e=>{ if(e.target.closest('.pmin')) setMin(true); else if(e.target.closest('.more')) panel.classList.toggle('full'); });
+function setPanel(s){ const k=s?s.key:null; if(k===panelKey) return; panelKey=k; panelStop=s;
+  STOPS.forEach(x=>x.mk.classList.toggle('dim',x===s));
+  if(!s){ showPanel(); return; }
+  panel.classList.remove('on','full'); clearTimeout(panel._t);
+  panel._t=setTimeout(()=>{ panel.innerHTML=s.html; fixMoon(); showPanel(); },panel.innerHTML?160:0); }
+addEventListener('keydown',e=>{ if((e.key==='i'||e.key==='I')&&!/INPUT|TEXTAREA/.test(document.activeElement.tagName)&&panelStop) setMin(!panelMin); });
+
+/* ---------- timeline along the bottom (a map, not to scale) ---------- */
+const tlPos=i=>(i+1)/(N+1);
+$('tlTicks').innerHTML=`<button data-go="0" style="left:0%"><i style="background:#ffb547"></i><span>Sun</span></button>`+STOPS.map((s,i)=>`<button data-go="${s.key}" style="left:${tlPos(i)*100}%"><i style="background:${CARD_COL[s.key]||'#ccc'}"></i><span>${s.name}</span></button>`).join('');
+function tlFrac(a){ if(a<=STOPS[0].a) return tlPos(0)*a/STOPS[0].a;
+  for(let i=0;i<N-1;i++){ const p=STOPS[i], q=STOPS[i+1]; if(a<q.a) return tlPos(i)+(tlPos(i+1)-tlPos(i))*(a-p.a)/(q.a-p.a); }
+  return Math.min(1,tlPos(N-1)+(1-tlPos(N-1))*(a-STOPS[N-1].a)/(END_AU-STOPS[N-1].a)); }
+
+/* ---------- the stage: the planet you're passing, full-bleed ---------- */
+const stage=$('stage');
+const layers=[0,1].map(()=>{ const el=document.createElement('div'); el.className='layer'; const c=document.createElement('canvas'); el.appendChild(c); stage.appendChild(el); return {el,cv:c,key:null,ready:false,D:0}; });
+const texCache={};
+const texOf=k=>texCache[k]||(texCache[k]=textureFor(k, REAL_KEYS.has(k)?1638:1024));
+function stageGeom(){ const Wd=innerWidth;
+  if(Wd<=820&&VH>500) return {D:Math.min(Wd*1.18,VH*.56),cx:Wd*.5,cy:VH*.28};      // phone portrait: planet up top, words below
+  if(VH<=500) return {D:VH*1.2,cx:Wd*.72,cy:VH*.55};                                // phone landscape
+  return {D:Math.min(VH*1.1,Wd*.62),cx:Wd*.7,cy:VH*.52}; }                          // desktop: cropped by the right edge
+async function paint(L,s){ L.key=s.key; L.ready=false; L.el.style.opacity=0; const g=stageGeom();
+  const D=g.D*(s.key==='saturn'?1.45:1), res=Math.min(1100,Math.round(D*Math.min(1.5,devicePixelRatio||1)));
+  const o={...(CARD_OPTS[s.key]||{}),light:[-.55,.55,.63],ambient:.02};             // lit from the upper left: the Sun is behind you
+  const ring=o.ring? await ringFor(s.key) : null; const T=await texOf(s.key);
+  if(L.key!==s.key) return;
+  L.cv.width=L.cv.height=res; L.D=D; L.el.classList.toggle('egg',s.key==='haumea');
+  const G=new Globe(L.cv,{...o,ringR:ring&&ring.r}); if(ring) G.ring=ring.data;
+  const T2={...T}; if(!o.clouds) delete T2.clouds; G.tex=T2; G.rot=.12; G.draw(); L.ready=true; }
+let stageList=[];
+function updateStage(){ const ship=scrollY+SHIP();
+  stageList=STOPS.map(s=>({s,d:(yOf(s.a)-ship)/VH})).sort((p,q)=>Math.abs(p.d)-Math.abs(q.d)).slice(0,2).filter(x=>Math.abs(x.d)<.7);
+  const want=new Set(stageList.map(x=>x.s.key));
+  for(const L of layers) if(L.key&&!want.has(L.key)){ L.key=null; L.ready=false; L.el.style.opacity=0; }
+  for(const x of stageList) if(!layers.some(L=>L.key===x.s.key)){ const L=layers.find(L=>!L.key); if(L) paint(L,x.s); }
+  const g=stageGeom();
+  for(const L of layers){ const x=stageList.find(q=>q.s.key===L.key); if(!x||!L.ready){ L.el.style.opacity=0; continue; }
+    const ad=Math.abs(x.d), o=1-sst(.12,.45,ad), sc=1.07-.12*Math.min(1,ad/.45);      // fades in, slow push-in as you pass
+    L.el.style.width=L.el.style.height=L.D+'px'; L.el.style.opacity=o.toFixed(3);
+    L.el.style.transform=`translate3d(${(g.cx-L.D/2).toFixed(1)}px,${(g.cy-L.D/2+x.d*VH*.3).toFixed(1)}px,0) scale(${sc.toFixed(4)})`; }
+  return stageList[0]; }
+/* textures for every stop load quietly in the background, so arriving at a planet never waits */
+async function preloadTex(){ for(const s of STOPS){ await texOf(s.key); await new Promise(r=>setTimeout(r,60)); } }
+
+/* ---------- layout ---------- */
+let SUN_Y=300;
+const yOf=a=>SUN_Y+a*U;
+function fixMoon(){ const mpx=384400/AU_KM*U; document.querySelectorAll('.mzpx').forEach(b=>b.textContent=mpx.toFixed(1)+' px'); }
+function fitHero(){ const h=document.querySelector('.hero h1'); if(!h) return; const W=h.clientWidth;
+  for(const [sel,k,max] of [['.l1',.6,80],['.l2',1,132]]){ const el=h.querySelector(sel); el.style.fontSize='100px'; const w=el.scrollWidth||1; el.style.fontSize=Math.min(max,100*W*k/w).toFixed(1)+'px'; } }
+function layout(){ VH=innerHeight; U=Math.round(Math.max(640,VH*1.1)); SUN_Y=Math.round(VH*1.02);
+  $('top').style.minHeight=VH+'px';
+  for(const s of STOPS) s.mk.style.top=(yOf(s.a)-22)+'px';
+  document.querySelectorAll('.say,.fly').forEach(el=>{ el.style.top=(yOf(+el.dataset.a)-el.offsetHeight/2)+'px'; });
+  end.style.top=(yOf(END_AU)-end.offsetHeight/2)+'px';
+  track.style.height=(yOf(END_AU)+VH*.75)+'px';
+  fitHero();
+  const kmScreen=VH/U*AU_KM; $('kmPerScreen').textContent=fmtKm(kmScreen);
+  fixMoon();
+  $('vgScreens').textContent=Math.round((173-END_AU)*U/VH).toLocaleString('en-US'); $('vgX').textContent=(173/END_AU).toFixed(1)+'×';
+  $('pxScreens').textContent=Math.round(268770*U/VH).toLocaleString('en-US');
+  for(const L of layers){ if(L.key){ const s=STOPS.find(x=>x.key===L.key); paint(L,s); } } }
+const SHIP=()=> innerWidth<=820&&innerHeight>500? VH*.3 : VH/2;
+const auNow=()=>Math.max(0,(scrollY+SHIP()-SUN_Y)/U);
+function go(target){ const s=STOPS.find(x=>x.key===target); const y= target==='0'||target===0? 0 : s? yOf(s.a)-SHIP() : 0;
+  scrollTo({top:y,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'}); }
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-go]'); if(b){ e.preventDefault(); go(b.dataset.go); } });
+const nextStop=()=>STOPS.find(s=>yOf(s.a)-(scrollY+SHIP())>VH*.08);
+$('hNext').onclick=()=>{ const n=nextStop(); n? go(n.key) : go('0'); };
+const io=new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting) e.target.classList.add('in'); }),{rootMargin:'-12% 0px -12% 0px'});
+document.querySelectorAll('.say,.endnote,.fly').forEach(el=>io.observe(el));
+let sunG=null;
+async function initSun(){ const cv=$('sunDisk'); const g=new Globe(cv,{...CARD_OPTS.sun,tilt:.13});
+  g.tex=await textureFor('sun',1638); g.rot=.3; g.draw(); cv.classList.add('ready'); sunG=g; }
+CARD_OPTS.ceres=CARD_OPTS.ceres||{spin:.06}; CARD_OPTS.pluto=CARD_OPTS.pluto||{tilt:-.3,spin:-.02};
+/* ---------- space: stars + streaking dust, the Sun shrinking behind you ---------- */
+const cv=$('space'), cx=cv.getContext('2d'); let W,H,DPR,stars=[],dust=[];
+let belt=[]; { let seed=7; const rnd=()=>{ seed=(seed*16807)%2147483647; return seed/2147483647; };
+  for(let i=0;i<1500;i++){ const u=rnd(); const a=2.15+1.1*(u<.5? Math.sqrt(u*2)*.5 : 1-Math.sqrt((1-u)*2)*.5);   // densest in the middle of the belt
+    belt.push({a, x:rnd(), w:1.6+2.2*rnd()*rnd(), h:1.3+1.6*rnd(), o:.35+.55*rnd(), v:(.004+.01*rnd())*(rnd()<.5?1:.8), tint:rnd()}); } }
+function sizeCv(){ DPR=Math.min(2,devicePixelRatio||1); W=innerWidth; H=innerHeight; cv.width=W*DPR; cv.height=H*DPR; cx.setTransform(DPR,0,0,DPR,0,0);
+  stars=Array.from({length:Math.round(W*H/1700)},()=>({x:Math.random()*W,y:Math.random()*H,r:Math.random()<.06?1.4:Math.random()*.9+.2,t:Math.random()*6,z:Math.random()*.03}));
+  dust=Array.from({length:Math.round(W*H/16000)},()=>({x:Math.random()*W,y:Math.random()*H,z:.4+Math.random()*1.4})); }
+let frameN=0, lastScrollT=0, lastY=scrollY, vel=0, lastT=performance.now(), idle=0, hudT=0;
+function frame(t){ const dt=Math.min(.1,(t-lastT)/1000)||.016; lastT=t;
+  const y=scrollY, dy=y-lastY; lastY=y; if(Math.abs(dy)>2) lastScrollT=t; const inst=dy/dt; vel+= (inst-vel)*Math.min(1,dt*6); if(Math.abs(dy)<.5) idle+=dt; else idle=0;
+  const a=auNow();
+  cx.clearRect(0,0,W,H);
+  // stars: barely move (they're light-years away) — a hint of parallax only
+  for(const s of stars){ const yy=((s.y-y*s.z)%H+H)%H; cx.globalAlpha=.35+.45*Math.abs(Math.sin(t/1700+s.t)); cx.fillStyle='#d6e4ff'; cx.fillRect(s.x,yy,s.r,s.r); }
+  // the asteroid belt: real-looking rubble between 2.1 and 3.3 AU, drawn where it actually is
+  if(belt.length){ const top=y-40, bot=y+H+40, tt=t/1000;
+    for(const p of belt){ const py=yOf(p.a); if(py<top||py>bot) continue; const px=((p.x+tt*p.v)%1)*W;   // they drift: everything here is orbiting
+      cx.globalAlpha=p.o; cx.fillStyle=p.tint<.5?'#c9b08c':p.tint<.8?'#a99a88':'#d8c4a4'; cx.fillRect(px,py-y,p.w,p.h); } cx.globalAlpha=1; }
+  // dust: streaks with your speed
+  const sp=Math.min(60,Math.abs(vel)*.02); cx.strokeStyle='rgba(180,210,255,.35)'; cx.lineWidth=1; cx.beginPath();
+  for(const d of dust){ d.y-=dy*d.z*.6; if(d.y<-60) d.y+=H+120; if(d.y>H+60) d.y-=H+120; cx.moveTo(d.x,d.y); cx.lineTo(d.x,d.y+Math.sign(vel||1)*(1+sp*d.z)); }
+  cx.globalAlpha=1; cx.stroke();
+  // the Sun behind you: apparent size ∝ 1/distance (true), clamped to a bright point
+  const dS=Math.max(0,(y-VH*.25)/U), rpx=Math.max(3, Math.min(VH*.3, VH*.3*(.07/(dS+.07)) ));
+  // opening screen: a giant sunrise whose arc spans the full width of the screen;
+  // as you start scrolling it eases down to the normal (1 / distance) size
+  const Wd=innerWidth, cap= VH>Wd*1.2 ? .3*VH : Math.min(.27*Wd,.32*VH), rH=(cap*cap+Wd*Wd/4)/(2*cap), cyH=VH+rH-cap-y;
+  const cyN=Math.max(SUN_Y-y,-rpx*.35), pz=Math.min(1,Math.max(0,y/(VH*.6))), p=pz*pz*(3-2*pz);
+  const sunR=rH+(rpx-rH)*p, sunC=cyH+(cyN-cyH)*p;
+  const sun=$('sunGlow').firstElementChild; sun.style.transform=`translateY(${sunC}px) scale(${sunR/130})`;
+  // hero text is dark-on-sun; fade it as the Sun recedes
+  document.body.classList.toggle('away',a>.04);
+  updateStage();
+  if(t-hudT>120){ hudT=t; hud(a); }
+  // (the Sun's surface is drawn once: it really takes ~25 days to turn, and redrawing a full-width disc would cost frames)
+  requestAnimationFrame(frame);
+}
+function hud(a){ const on=scrollY>VH*.5; $('hud').classList.toggle('on',on); $('tl').classList.toggle('on',on);
+  const km=a*AU_KM; $('hDist').textContent=(a<.001?'0 km':fmtKm(km));
+  $('hLight').textContent=`from the Sun · ${a.toFixed(a<10?2:1)} AU · sunlight ${fmtT(km/C_KMS)} old`;
+  const kms=Math.abs(vel)/U*AU_KM, moving=idle<.35&&kms>1;
+  $('speed').classList.toggle('on',moving&&on);
+  if(moving) $('speed').textContent= kms>C_KMS*.5? `${(kms/C_KMS).toFixed(kms>C_KMS*10?0:1)}× light speed` : `${Math.round(kms).toLocaleString('en-US')} km/s`;
+  $('tlFill').style.width=(tlFrac(a)*100)+'%';
+  const n0=stageList[0], cur= n0&&Math.abs(n0.d)<.3&&scrollY>VH*.45 ? n0.s : null; setPanel(cur);
+  document.querySelectorAll('#tlTicks button').forEach(b=>b.classList.toggle('cur', cur? b.dataset.go===cur.key : (b.dataset.go==='0'&&scrollY<VH*.3)));
+  const n=nextStop();
+  if(n){ const scr=(yOf(n.a)-(scrollY+SHIP()))/VH; $('hNext').innerHTML=`<small>Next</small>${n.name} · ${scr<1.05?'just ahead':scr.toFixed(1)+' screens'} ↓`; }
+  else $('hNext').innerHTML='<small>End of the page</small>Back to the Sun ↑';
+}
+addEventListener('resize',()=>{ sizeCv(); layout(); });
+sizeCv(); layout(); requestAnimationFrame(frame);
+if(document.fonts) document.fonts.ready.then(layout);
+initSun().then(preloadTex);
+const menu=$('menu');
+function openMenu(){ menu.hidden=false; document.body.style.overflow='hidden'; $('menuClose').focus(); }
+function closeMenu(){ menu.hidden=true; document.body.style.overflow=''; }
+$('menuBtn').onclick=openMenu; $('menuClose').onclick=closeMenu; document.querySelectorAll('[data-menu]').forEach(b=>b.onclick=openMenu);
+menu.addEventListener('click',e=>{ if(e.target===menu||e.target.closest('a')) closeMenu(); });
+addEventListener('keydown',e=>{ if(e.key==='Escape'&&!menu.hidden) closeMenu(); });
+function fpsUI(){ const on=window.StarSetFPS&&StarSetFPS.on; $('fpsState').textContent=on?'on':'off'; }
+$('fpsToggle').onclick=()=>{ if(window.StarSetFPS) StarSetFPS.set(!StarSetFPS.on); };
+addEventListener('load',fpsUI);
+window.__journey={layout,go,auNow,U:()=>U,openMenu,stage:()=>stageList.map(x=>[x.s.key,+x.d.toFixed(2)])};
+
+</script>
+</body>
+</html>

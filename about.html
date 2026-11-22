@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How StarSet is built — a case study</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--line:rgba(120,200,255,.16);--line2:rgba(120,200,255,.3);--amber:#ffb547;--cyan:#5fd8ff;--green:#7be3a0;--text:#dfe8f3;--muted:#8494aa;
+  --mono:'Orbitron',sans-serif;--sans:'Orbitron',sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#05080e;color:var(--text);font-family:var(--sans);line-height:1.6}
+a{color:var(--cyan)}
+header{max-width:980px;margin:0 auto;padding:22px 20px 10px;display:flex;gap:10px;align-items:center}
+.nb{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--muted);text-decoration:none;padding:6px 9px;border:1px solid var(--line);border-radius:6px}
+main{max-width:980px;margin:0 auto;padding:10px 20px 80px}
+.tag{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--amber)}
+h1{font-family:Orbitron,sans-serif;font-weight:600;font-size:clamp(34px,6vw,58px);line-height:1.05;margin:10px 0 14px}
+.lede{font-size:18px;color:#b9c6d6;max-width:720px}
+h2{font-size:24px;margin:56px 0 6px} h2+p.sub{color:var(--muted);margin-bottom:16px}
+h3{font-size:16px;margin:18px 0 4px}
+p{margin:8px 0} ul{margin:8px 0 8px 20px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:28px 0}
+.kpi{border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.kpi b{display:block;font-family:var(--mono);font-size:26px;color:var(--cyan);font-weight:500}
+.kpi span{font-size:12.5px;color:var(--muted)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.card{border:1px solid var(--line);border-radius:10px;padding:14px 16px;background:rgba(255,255,255,.015)}
+.card h3{margin-top:0}
+table{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
+th{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-align:left;font-weight:400;padding:8px;border-bottom:1px solid var(--line2)}
+td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+td code,.mono{font-family:var(--mono);font-size:12.5px}
+.ok{color:var(--green);font-family:var(--mono);font-size:12px;white-space:nowrap}
+.scroll{overflow-x:auto}
+.pill{display:inline-block;font-family:var(--mono);font-size:10.5px;padding:2px 7px;border-radius:20px;border:1px solid var(--line2);color:var(--muted);margin:2px 4px 2px 0}
+.pill.m{color:var(--amber);border-color:rgba(255,181,71,.4)}
+svg text{font-family:var(--sans)}
+.dec{border-left:3px solid var(--amber);padding:4px 0 4px 14px;margin:14px 0}
+.dec b{color:#fff}
+
+.flow{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:16px 0 6px;counter-reset:st}
+.step{position:relative;border:1px solid var(--line);border-radius:10px;padding:14px 14px 12px;background:rgba(95,216,255,.03)}
+.step::before{counter-increment:st;content:counter(st);display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:rgba(95,216,255,.14);color:var(--cyan);font:600 12px var(--mono);margin-bottom:8px}
+.step:not(:last-child)::after{content:'→';position:absolute;right:-13px;top:50%;transform:translateY(-50%);color:var(--cyan);font-size:16px}
+.step h3{margin:0 0 4px;font-size:14px} .step p{margin:0;font-size:13px;color:#b9c6d6}
+.chatdemo{margin:18px 0 8px;border:1px solid var(--line2);border-radius:12px;padding:14px;background:rgba(10,13,19,.8);max-width:560px;display:flex;flex-direction:column;gap:8px;font-size:13.5px}
+.chatdemo .q{align-self:flex-end;background:#2b5fd9;color:#fff;padding:8px 12px;border-radius:12px 12px 4px 12px;max-width:85%}
+.chatdemo .did{color:var(--cyan);font-size:12px} .chatdemo .a{align-self:flex-start;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);padding:8px 12px;border-radius:12px 12px 12px 4px;max-width:90%}
+.chatdemo small{color:var(--muted);font-size:11px;text-align:center}
+.tryastro{display:inline-flex;align-items:center;gap:8px;margin-top:10px;padding:9px 16px;border-radius:999px;border:1px solid rgba(140,190,255,.45);background:rgba(43,95,217,.18);color:#dbe8ff;font:500 13px var(--sans);cursor:pointer}
+.tryastro:hover{background:rgba(43,95,217,.32)}
+@media (max-width:760px){ .flow{grid-template-columns:1fr 1fr} .step:nth-child(2)::after{display:none} }
+@media (max-width:460px){ .flow{grid-template-columns:1fr} .step::after{display:none} }
+footer{max-width:980px;margin:0 auto;padding:20px;color:var(--muted);font-size:13px;border-top:1px solid var(--line)}
+</style>
+<style>@view-transition{navigation:auto}::view-transition-old(root),::view-transition-new(root){animation-duration:.28s}</style>
+<script type="speculationrules">{"prefetch":[{"source":"document","where":{"href_matches":"*.html"},"eagerness":"moderate"}]}</script>
+<script src="perf.js" defer></script>
+<script src="chat.js" defer></script>
+</head>
+<body>
+<header><a class="nb" href="index.html">← STARSET</a><span class="tag" style="margin-left:auto">Case study</span></header>
+<main>
+  <span class="tag">How StarSet is built</span>
+  <h1>From a college project to a sky you can hold.</h1>
+  <p class="lede">StarSet started as a BSc project: an astronomy site for kids. This page is the product write-up behind the rebuild — who it’s for, what was required, how it’s put together, how we know the numbers are right, and what we chose not to do.</p>
+
+  <div class="kpis">
+    <div class="kpi"><b>9</b><span>pages, each one self-contained HTML</span></div>
+    <div class="kpi"><b>20,176</b><span>real stars plotted from catalogue data</span></div>
+    <div class="kpi"><b>0</b><span>servers of our own or build steps</span></div>
+    <div class="kpi"><b>4</b><span>languages: English, हिन्दी, मराठी, मारवाड़ी</span></div>
+    <div class="kpi"><b>1</b><span>AI guide, Astro, on every page</span></div>
+  </div>
+
+  <h2>1 · The problem</h2>
+  <p class="sub">Why another astronomy site?</p>
+  <div class="cards">
+    <div class="card"><h3>Kids learn the sky from flat pictures</h3><p>Textbook diagrams squash distances and freeze time, so “why do we have seasons?” or “why isn’t Pluto a planet?” never quite click.</p></div>
+    <div class="card"><h3>Indian sky culture is missing</h3><p>Families plan Purnima, Ekadashi and Sankranti by the Moon and Sun, but no sky app shows <i>where</i> a tithi or nakshatra actually is overhead.</p></div>
+    <div class="card"><h3>Great tools are fragmented</h3><p>Stellarium does the sky, Google Earth does the planet, NASA does missions. Nobody connects them for a 12-year-old, in their language, on a phone.</p></div>
+  </div>
+
+  <h2>2 · Users & goals</h2>
+  <table>
+    <thead><tr><th>Persona</th><th>Needs</th><th>Success looks like</th></tr></thead>
+    <tbody>
+      <tr><td><b>Student, 10–16</b></td><td>Explore without instructions; answers to “why”</td><td>Finishes a guided tour; scores 7/10 on the quiz</td></tr>
+      <tr><td><b>Parent / grandparent</b></td><td>Learn with the child, ideally in Hindi or Marwari; festival dates</td><td>Uses the Panchang view to see tonight’s tithi in the real sky</td></tr>
+      <tr><td><b>Teacher</b></td><td>A projector-ready demo that works offline-ish and needs no login</td><td>Deep-links a tour (<code>#tour-seasons</code>) straight into class</td></tr>
+      <tr><td><b>Curious adult</b></td><td>Accuracy, eclipses, “what was the sky on my day?”</td><td>Shares a sky-story poster or eclipse link</td></tr>
+    </tbody>
+  </table>
+
+  <h2>3 · Requirements → features</h2>
+  <p class="sub">A traceability matrix, the same way I’d track scope on a client project.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>ID</th><th>Requirement</th><th>Delivered by</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">R1</td><td>Show the whole Solar System with real, live positions</td><td><a href="simulation.html">3D simulation</a>: planets, 5 dwarf planets, belts, moons, comets, spacecraft</td><td class="ok">✓ LIVE</td></tr>
+      <tr><td class="mono">R2</td><td>Keep the screen uncluttered for kids</td><td>Moons appear only when you open their planet; panels minimise (I / L)</td><td class="ok">✓ LIVE</td></tr>
+      <tr><td class="mono">R3</td><td>Teach “why”, not just “what”</td><td>5 guided tours, a 10-question quiz, a Panchang explainer</td><td class="ok">✓ LIVE</td></tr>
+      <tr><td class="mono">R4</td><td>Show tonight’s real sky from the user’s city</td><td><a href="sky.html">Tonight’s Sky</a>: Stellarium-style dome, grids, search, phone compass</td><td class="ok">✓ LIVE</td></tr>
+      <tr><td class="mono">R5</td><td>Connect Indian calendar terms to the actual sky</td><td><a href="sky.html#panchang">Panchang in the real sky</a>: 27 nakshatras, 12 rashis and the Sun→Moon arc</td><td class="ok">✓ NEW</td></tr>
+      <tr><td class="mono">R6</td><td>Explain eclipses from both sides</td><td><a href="eclipse.html">Eclipse twin view</a>: shadow on the globe plus the view from your city</td><td class="ok">✓ NEW</td></tr>
+      <tr><td class="mono">R7</td><td>Make true scale feel real</td><td><a href="scale.html">Solar system on your street</a></td><td class="ok">✓ NEW</td></tr>
+      <tr><td class="mono">R8</td><td>Support Indian languages, including spoken</td><td>Tours in हिन्दी / मराठी / मारवाड़ी with a Listen button</td><td class="ok">✓ NEW</td></tr>
+      <tr><td class="mono">R9</td><td>Make the speed of light tangible</td><td><a href="light.html">Light-time messages</a></td><td class="ok">✓ NEW</td></tr>
+      <tr><td class="mono">R10</td><td>Something to keep and share</td><td><a href="story.html">Your sky story</a> poster (PNG)</td><td class="ok">✓ NEW</td></tr>
+      <tr><td class="mono">R11</td><td>Work on phones, in portrait and landscape</td><td>Responsive layouts, pinch zoom, landscape modes on every page</td><td class="ok">✓ LIVE</td></tr>
+      <tr><td class="mono">R12</td><td>Explore Earth itself</td><td><a href="earth.html">Earth explorer</a>: a globe down to street level when online</td><td class="ok">✓ LIVE</td></tr>
+      <tr><td class="mono">R13</td><td>Answer any space question, in the visitor’s own language, and show the answer</td><td><b>Astro</b>, the AI guide (section 5): typed or spoken questions, answers aloud, flies the 3D view and points the sky</td><td class="ok">✓ NEW</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>4 · Architecture</h2>
+  <p class="sub">Static pages and shared data files. All the maths runs in the browser.</p>
+  <svg viewBox="0 0 940 380" role="img" aria-label="Architecture diagram" style="width:100%;height:auto;margin-top:10px">
+    <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="#5fd8ff"/></marker></defs>
+    <g font-size="13" fill="#dfe8f3">
+      <rect x="10" y="20" width="200" height="340" rx="10" fill="rgba(255,181,71,.05)" stroke="rgba(255,181,71,.4)"/>
+      <text x="24" y="44" fill="#ffb547" font-family="Orbitron" font-size="11" letter-spacing="2">DATA (STATIC FILES)</text>
+      <text x="24" y="76">sky-data.js</text><text x="24" y="93" fill="#8494aa" font-size="11">stars · lines · Messier</text>
+      <text x="24" y="124">earth-data.js</text><text x="24" y="141" fill="#8494aa" font-size="11">Natural Earth countries</text>
+      <text x="24" y="172">tex/ images</text><text x="24" y="189" fill="#8494aa" font-size="11">planet & moon maps, ESO sky</text>
+      <text x="24" y="220">tours-i18n.js</text><text x="24" y="237" fill="#8494aa" font-size="11">हिन्दी · मराठी · मारवाड़ी</text>
+      <text x="24" y="268">inline tables</text><text x="24" y="285" fill="#8494aa" font-size="11">Kepler elements, craft, comets</text>
+
+      <rect x="260" y="20" width="230" height="340" rx="10" fill="rgba(95,216,255,.05)" stroke="rgba(95,216,255,.4)"/>
+      <text x="274" y="44" fill="#5fd8ff" font-family="Orbitron" font-size="11" letter-spacing="2">ENGINES (BROWSER)</text>
+      <text x="274" y="76">Astronomy Engine 2.1</text><text x="274" y="93" fill="#8494aa" font-size="11">positions, rise/set, eclipses, phases</text>
+      <text x="274" y="124">panchang.js</text><text x="274" y="141" fill="#8494aa" font-size="11">tithi · nakshatra · yoga · Sankranti</text>
+      <text x="274" y="172">eclipse-math.js</text><text x="274" y="189" fill="#8494aa" font-size="11">shadow axis, umbra/penumbra on Earth</text>
+      <text x="274" y="220">three.js r160</text><text x="274" y="237" fill="#8494aa" font-size="11">3D scene, shaders, sky dome</text>
+      <text x="274" y="268">MapLibre GL 6</text><text x="274" y="285" fill="#8494aa" font-size="11">globe, street maps, overlays</text>
+      <text x="274" y="316">textures.js · chat.js</text><text x="274" y="333" fill="#8494aa" font-size="11">fallback surfaces · Astro chat</text>
+
+      <rect x="540" y="20" width="390" height="340" rx="10" fill="rgba(123,227,160,.05)" stroke="rgba(123,227,160,.4)"/>
+      <text x="554" y="44" fill="#7be3a0" font-family="Orbitron" font-size="11" letter-spacing="2">PAGES</text>
+      <g font-size="13">
+        <text x="554" y="76">index · landing</text><text x="744" y="76">simulation · 3D</text>
+        <text x="554" y="110">sky · tonight + panchang</text><text x="744" y="110">earth · globe</text>
+        <text x="554" y="144">eclipse · twin view</text><text x="744" y="144">scale · your street</text>
+        <text x="554" y="178">light · messages</text><text x="744" y="178">story · poster</text>
+        <text x="554" y="212">about · this page</text>
+      </g>
+      <text x="554" y="256" fill="#8494aa" font-size="11.5">Shared through localStorage:</text>
+      <text x="554" y="274" fill="#8494aa" font-size="11.5">your city (starset.loc) · tour language · messages</text>
+      <text x="554" y="304" fill="#8494aa" font-size="11.5">Optional platform features: Astro AI (Claude),</text><text x="554" y="320" fill="#8494aa" font-size="11.5">voice in and out, PNG save</text>
+      <text x="554" y="342" fill="#8494aa" font-size="11.5">Optional online layers: street tiles, search</text>
+      <path d="M212 190 L256 190" stroke="#5fd8ff" stroke-width="2" marker-end="url(#ar)"/>
+      <path d="M492 190 L536 190" stroke="#5fd8ff" stroke-width="2" marker-end="url(#ar)"/>
+    </g>
+  </svg>
+
+  <h2>5 · Astro, the AI guide</h2>
+  <p class="sub">From my MSc chatbot to a guide that can show you the answer.</p>
+  <p>My MSc Data Science project was the <b>StarSet Chatbot</b>, an NLP chatbot that answered astronomy questions. Astro is its successor: the same idea, now built into every StarSet page and powered by a large language model (Claude). The goal stayed the same: let a curious kid ask “why?” in their own words and get a clear answer. What changed is that Astro can also <i>show</i> the answer.</p>
+
+  <div class="flow">
+    <div class="step"><h3>Ask</h3><p>Type or speak, in English, हिंदी, Hinglish, मराठी or मारवाड़ी.</p></div>
+    <div class="step"><h3>Add context</h3><p>The page tells Astro what’s on screen: the focused planet, the simulation date, your city, and which planets are above your horizon right now.</p></div>
+    <div class="step"><h3>Answer</h3><p>A short, accurate answer streams in, in the language you used. Tap Listen to hear it.</p></div>
+    <div class="step"><h3>Show</h3><p>If you asked to see something, Astro flies the 3D view, points the sky or opens the right page.</p></div>
+  </div>
+
+  <div class="chatdemo" aria-label="Example conversation">
+    <div class="q">Saturn ko true scale me dikhao</div>
+    <div class="did">→ Opening True Scale at Saturn</div>
+    <div class="a">Yeh raha <b>Saturn</b>, asli size aur asli doori par. Sun se ye lagbhag <b>1.4 billion km</b> door hai, itna ki wahan tak roshni ko bhi <b>80 minute</b> lagte hain.</div>
+    <small>An example of the kind of reply Astro gives; real answers vary.</small>
+  </div>
+
+  <h3>What Astro can do on the page</h3>
+  <div class="scroll"><table>
+    <thead><tr><th>Tool</th><th>What it does</th><th>Try asking</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">show_body</td><td>Flies the 3D Solar System to any of 46 planets, moons, dwarf planets, comets or spacecraft, or opens it in True Scale</td><td>“Take me to Voyager 1” · “Jupiter dikhao”</td></tr>
+      <tr><td class="mono">find_in_sky</td><td>Points Tonight’s Sky at a star, constellation, planet or Messier object for your city</td><td>“Where is Orion?” · “Dhruv tara kahan hai?”</td></tr>
+      <tr><td class="mono">open_page</td><td>Opens any StarSet page or feature: tours, quiz, True Scale, Panchang</td><td>“Start the quiz” · “Show me the panchang”</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Design choices</h3>
+  <div class="cards">
+    <div class="card"><h3>Maths from the engine, words from the AI</h3><p>Positions, rise times and eclipses still come from Astronomy Engine. Astro reads them from the page instead of guessing, and is told never to invent eclipse dates.</p></div>
+    <div class="card"><h3>Your language, your script</h3><p>Ask in Hinglish and the reply comes back in Hinglish. Ask in Devanagari and it answers in Devanagari. The Listen button picks a Hindi or English voice to match.</p></div>
+    <div class="card"><h3>Made for kids</h3><p>Short answers with one everyday comparison, focused on space, suitable for children, with a visible “Astro is an AI and can make mistakes” note.</p></div>
+    <div class="card"><h3>StarSet keeps nothing</h3><p>Questions go to Claude only to get the answer. StarSet keeps no copy: the chat lives in your browser tab and is gone when you close it. No accounts, no StarSet server.</p></div>
+    <div class="card"><h3>Optional by design</h3><p>If AI isn’t available where the site is opened, the Astro button simply doesn’t appear, and every other feature works as before.</p></div>
+    <div class="card"><h3>Fits phones</h3><p>On a phone the chat opens full-screen, and it gets out of the way after it shows you something, so you see Saturn and not the chat.</p></div>
+  </div>
+  <p style="color:var(--muted);font-size:13px">Tested in a headless browser with a stand-in AI: streamed answers, each tool on and across pages, the chat following you to the next page, and layouts at 1440 px, 390 px and phone landscape.</p>
+  <button class="tryastro" id="tryAstro" hidden>✦ Ask Astro now</button>
+
+  <h2>6 · How we know it’s right</h2>
+  <p class="sub">Every feature was checked against an independent reference before it shipped.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Check</th><th>StarSet says</th><th>Reference</th><th></th></tr></thead>
+    <tbody>
+      <tr><td>Moon altitude from Mumbai, test evening</td><td class="mono">66.3°</td><td>Astronomy Engine, computed independently of the sky-dome renderer</td><td class="ok">✓ MATCH</td></tr>
+      <tr><td>Voyager 1 distance, Nov 2026</td><td class="mono">≈ 173 AU = 1 light-day</td><td>NASA/JPL: one light-day milestone, Nov 2026</td><td class="ok">✓ MATCH</td></tr>
+      <tr><td>Tithi at 19 Nov 2026, 6:30 pm IST</td><td class="mono">Shukla Dashami, ends 7:16 am</td><td>Standard Lahiri panchang</td><td class="ok">✓ MATCH</td></tr>
+      <tr><td>Makar Sankranti 2026</td><td class="mono">14 Jan 2026, 2:59 pm IST</td><td>Published panchangs (Lahiri)</td><td class="ok">✓ MATCH</td></tr>
+      <tr><td>Diwali new moon 2026</td><td class="mono">9 Nov, 12:32 pm IST</td><td>Astronomy Engine moon-phase search</td><td class="ok">✓ MATCH</td></tr>
+      <tr><td>Total solar eclipse, 12 Aug 2026</td><td class="mono">greatest eclipse ≈ 65°N 26°W</td><td>NASA eclipse bulletin (Iceland / Greenland Sea)</td><td class="ok">✓ MATCH</td></tr>
+      <tr><td>Same eclipse from Madrid</td><td class="mono">99.9% covered at 8:31 pm</td><td>Madrid is just outside totality</td><td class="ok">✓ MATCH</td></tr>
+      <tr><td>Luxor, 2 Aug 2027</td><td class="mono">total, near 1:04 pm local</td><td>NASA: one of the century’s longest totalities, over Egypt</td><td class="ok">✓ MATCH</td></tr>
+      <tr><td>Partial lunar eclipse, 28 Aug 2026</td><td class="mono">umbral magnitude ≈ 0.94</td><td>Published magnitude ≈ 0.93</td><td class="ok">✓ ±0.01</td></tr>
+      <tr><td>Makemake’s perihelion and aphelion</td><td class="mono">≈ 38.1 / 52.7 AU</td><td>JPL Small-Body Database</td><td class="ok">✓ MATCH</td></tr>
+    </tbody>
+  </table></div>
+  <p style="color:var(--muted);font-size:13px">Each page was also tested automatically in a headless browser at desktop (1280 px), phone portrait (390 px) and phone landscape (844 × 390): no script errors, screenshots reviewed.</p>
+
+  <h2>7 · Key decisions</h2>
+  <div class="dec"><b>No backend.</b> Every page is one HTML file plus shared data. That means zero hosting cost, nothing to maintain, and nothing collected about children. The trade-off: no accounts, so messages and settings live only in your browser.</div>
+  <div class="dec"><b>Compute, don’t download.</b> Planet positions, eclipses and the panchang are calculated on the device with Astronomy Engine. That avoids a dependency on any API that could change, rate-limit or disappear.</div>
+  <div class="dec"><b>Licences first.</b> Only CC BY, CC BY-SA, CC0 or public-domain images are used, all credited in the footer. A few beautiful moon maps were left out because they were non-commercial or unlabelled.</div>
+  <div class="dec"><b>Degrade gracefully.</b> Where a viewer blocks something (the phone compass, live street tiles, search), the page explains it and offers a manual fallback, such as compass buttons or an offline globe.</div>
+  <div class="dec"><b>An AI guide on top, not instead.</b> Astro explains and navigates, but every number on screen is still computed. The AI is a friendly front door to the engine, not a replacement for it.</div>
+  <div class="dec"><b>Marwari as a first-class language.</b> No sky app speaks Marwari. It shares a voice with Hindi for speech, and its text was written for review by a native speaker.</div>
+
+  <h2>8 · Constraints & risks</h2>
+  <table>
+    <thead><tr><th>Constraint / risk</th><th>Impact</th><th>Mitigation</th></tr></thead>
+    <tbody>
+      <tr><td>Hosted inside a sandboxed viewer</td><td>No live tiles, compass or geolocation in the preview</td><td>Offline fallbacks; full features when hosted directly (e.g. GitHub Pages)</td></tr>
+      <tr><td>Low-end phones</td><td>3D can be heavy</td><td>Capped pixel ratio; moons are only built when you open a planet</td></tr>
+      <tr><td>Panchang conventions vary</td><td>Users may see a 1-day difference vs. a local calendar</td><td>Uses Lahiri (the Indian government standard) and states it on screen</td></tr>
+      <tr><td>AI answers can be wrong</td><td>A confident mistake could mislead a child</td><td>Short answers, told to flag uncertainty and never invent dates; facts on screen come from the engine; a visible “can make mistakes” note</td></tr>
+      <tr><td>Translation quality</td><td>Wrong tone for kids</td><td>Native-speaker review loop, starting with Marwari</td></tr>
+    </tbody>
+  </table>
+
+  <h2>9 · Roadmap</h2>
+  <div class="cards">
+    <div class="card"><span class="pill m">NEXT</span><h3>Own domain + GitHub Pages</h3><p>Turns on the compass, street maps, search and “my location” for everyone.</p></div>
+    <div class="card"><span class="pill">LATER</span><h3>Teacher mode</h3><p>Lesson playlists of tours, a projector layout and printable worksheets.</p></div>
+    <div class="card"><span class="pill">LATER</span><h3>More languages</h3><p>Gujarati, Tamil and Bengali tours, and translated quiz questions.</p></div>
+    <div class="card"><span class="pill">LATER</span><h3>Astro as quiz master</h3><p>Astro builds a fresh quiz from what you just explored, and explains each wrong answer.</p></div>
+    <div class="card"><span class="pill">IDEA</span><h3>ISS pass alerts</h3><p>“Look up at 7:42 pm” for your city, using public orbital data.</p></div>
+  </div>
+</main>
+<script>/* show the "Ask Astro now" button only when the chat is available on this page */
+(function w(n){ const f=document.getElementById('astroFab'), b=document.getElementById('tryAstro'); if(f&&f.classList.contains('on')&&window.__astroOpen){ b.hidden=false; b.onclick=()=>window.__astroOpen(); return; } if(n<40) setTimeout(()=>w(n+1),500); })(0);</script>
+<footer>StarSet · designed and built by Suraj · data: d3-celestial (BSD), Natural Earth, Astronomy Engine (MIT); images: Solar System Scope (CC BY 4.0), ESO/S. Brunier (CC BY 4.0), Celestia community maps (CC BY / BY-SA / CC0). <a href="index.html">Back to StarSet</a></footer>
+</body>
+</html>

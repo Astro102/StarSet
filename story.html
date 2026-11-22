@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StarSet — Your Sky Story</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Tiro+Devanagari+Hindi&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
+<style>
+:root{--panel:rgba(8,13,22,.9);--line:rgba(120,200,255,.16);--line2:rgba(120,200,255,.32);--amber:#ffb547;--cyan:#5fd8ff;--text:#dfe8f3;--muted:#8494aa;
+  --mono:'Orbitron',sans-serif;--sans:'Orbitron',sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;background:#03060b;color:var(--text);font-family:var(--sans)}
+button,input,select{font:inherit;color:inherit} button{background:none;border:0;cursor:pointer}
+.wrap{display:grid;grid-template-columns:340px 1fr;gap:20px;padding:16px;min-height:100vh;align-items:start}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px}
+#form{padding:14px;position:sticky;top:16px;display:grid;gap:10px}
+.tag{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.nb{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--muted);text-decoration:none;padding:6px 9px;border:1px solid var(--line);border-radius:6px}
+h1{font-size:21px;line-height:1.15}
+#form p{font-size:13px;color:#b9c6d6;line-height:1.5}
+label{display:grid;gap:4px}
+input,select{background:rgba(255,255,255,.05);border:1px solid var(--line2);border-radius:7px;padding:7px 8px;font-size:13.5px;width:100%}
+select option{background:#0b111c}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.pb{font-family:var(--mono);font-size:10.5px;padding:5px 8px;border:1px solid var(--line2);border-radius:6px}
+.pb:hover,.pb.on{border-color:var(--cyan);color:var(--cyan)}
+.go{background:var(--amber);color:#1a1000;border-radius:8px;padding:10px;font-weight:600}
+#msg{font-size:12px;color:var(--muted);min-height:16px}
+#out{display:flex;justify-content:center}
+#poster{width:min(100%,640px);height:auto;border-radius:6px;box-shadow:0 20px 60px rgba(0,0,0,.6),0 0 0 1px rgba(255,214,140,.15)}
+#custom[hidden]{display:none}
+@media (max-width:820px){ .wrap{grid-template-columns:1fr;padding:10px} #form{position:static} #out{order:-1} }
+</style>
+<style>@view-transition{navigation:auto}::view-transition-old(root),::view-transition-new(root){animation-duration:.28s}</style>
+<script type="speculationrules">{"prefetch":[{"source":"document","where":{"href_matches":"*.html"},"eagerness":"moderate"}]}</script>
+<script src="perf.js" defer></script>
+<script src="chat.js" defer></script>
+</head>
+<body>
+<div class="wrap">
+  <aside id="form" class="panel">
+    <div style="display:flex;gap:8px"><a class="nb" href="index.html">← HOME</a><a class="nb" href="sky.html">LIVE SKY ↗</a></div>
+    <span class="tag">Your sky story</span>
+    <h1>The sky on the day that mattered.</h1>
+    <p>A birthday, a wedding, the night your child was born. Pick the moment and place — StarSet draws exactly what was overhead, with the Moon’s phase, the planets and the Panchang of that moment.</p>
+    <div class="chips"><button class="pb" data-p="now">TONIGHT</button><button class="pb" data-p="ch3">CHANDRAYAAN-3 LANDING</button><button class="pb" data-p="ind">15 AUG 1947</button></div>
+    <label><span class="tag">Title</span><input id="title" maxlength="48" value="The night we met"></label>
+    <label><span class="tag">Line under the title (optional)</span><input id="sub" maxlength="60" placeholder="Aarav &amp; Meera"></label>
+    <div class="two"><label><span class="tag">Date</span><input id="date" type="date"></label><label><span class="tag">Local time</span><input id="time" type="time" value="20:00"></label></div>
+    <label><span class="tag">Place</span><select id="city"></select></label>
+    <div id="custom" class="two" hidden><label><span class="tag">Latitude</span><input id="lat" type="number" step="0.0001" value="19.28"></label><label><span class="tag">Longitude</span><input id="lon" type="number" step="0.0001" value="72.87"></label></div>
+    <div class="two"><label><span class="tag">Language</span><select id="lang"><option value="en">English</option><option value="hi">हिन्दी</option></select></label>
+      <label><span class="tag">Style</span><select id="style"><option value="navy">Midnight</option><option value="ink">Ink &amp; gold</option><option value="paper">Paper (print)</option></select></label></div>
+    <button class="go" id="dl">⬇ DOWNLOAD POSTER (PNG)</button>
+    <div id="msg"></div>
+  </aside>
+  <main id="out"><canvas id="poster" width="1200" height="1680" aria-label="Star map poster"></canvas></main>
+</div>
+<script src="sky-data.js"></script>
+<script src="panchang.js"></script>
+<script>
+const $=id=>document.getElementById(id), A=window.Astronomy, SD=window.SKYDATA, P=window.Panchang, D=Math.PI/180;
+const CITIES=[['Mumbai',19.076,72.8777,'Asia/Kolkata'],['Mira Road',19.2812,72.8707,'Asia/Kolkata'],['Pune',18.5204,73.8567,'Asia/Kolkata'],['Delhi',28.6139,77.209,'Asia/Kolkata'],
+ ['Jaipur',26.9124,75.7873,'Asia/Kolkata'],['Jodhpur',26.2389,73.0243,'Asia/Kolkata'],['Bikaner',28.0229,73.3119,'Asia/Kolkata'],['Ahmedabad',23.0225,72.5714,'Asia/Kolkata'],
+ ['Bengaluru',12.9716,77.5946,'Asia/Kolkata'],['Chennai',13.0827,80.2707,'Asia/Kolkata'],['Hyderabad',17.385,78.4867,'Asia/Kolkata'],['Kolkata',22.5726,88.3639,'Asia/Kolkata'],
+ ['Nagpur',21.1458,79.0882,'Asia/Kolkata'],['Dubai',25.2048,55.2708,'Asia/Dubai'],['Singapore',1.3521,103.8198,'Asia/Singapore'],['London',51.5074,-0.1278,'Europe/London'],
+ ['New York',40.7128,-74.006,'America/New_York'],['Sydney',-33.8688,151.2093,'Australia/Sydney'],['Moon south pole region (Chandrayaan-3, as seen from Earth: Bengaluru ISTRAC)',12.9716,77.5946,'Asia/Kolkata']];
+CITIES.pop();
+CITIES.forEach((c,i)=>{ const o=document.createElement('option'); o.value=i; o.textContent=c[0]; $('city').appendChild(o); });
+const oc=document.createElement('option'); oc.value='x'; oc.textContent='Other — enter coordinates'; $('city').appendChild(oc);
+$('city').value=1;
+const BROWSER_TZ=Intl.DateTimeFormat().resolvedOptions().timeZone||'Asia/Kolkata';
+const today=new Date(); $('date').value=today.toISOString().slice(0,10);
+
+/* local wall-clock time in a time zone → UTC Date */
+function tzOff(tz,date){ const f=new Intl.DateTimeFormat('en-US',{timeZone:tz,hourCycle:'h23',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const p=Object.fromEntries(f.formatToParts(date).map(x=>[x.type,x.value])); return Date.UTC(+p.year,+p.month-1,+p.day,+p.hour%24,+p.minute,+p.second)-date.getTime(); }
+function localToUTC(ds,ts,tz){ const [y,m,d]=ds.split('-').map(Number), [hh,mm]=(ts||'20:00').split(':').map(Number); const guess=Date.UTC(y,m-1,d,hh,mm);
+  let t=guess-tzOff(tz,new Date(guess)); t=guess-tzOff(tz,new Date(t)); return new Date(t); }
+function place(){ const v=$('city').value; if(v==='x') return {name:`${(+$('lat').value).toFixed(2)}°, ${(+$('lon').value).toFixed(2)}°`,lat:+$('lat').value,lon:+$('lon').value,tz:BROWSER_TZ};
+  const c=CITIES[+v]; return {name:c[0],lat:c[1],lon:c[2],tz:c[3]}; }
+
+const PL=[['Mercury','बुध','#c9c1b6'],['Venus','शुक्र','#fff1c8'],['Mars','मंगल','#ff8a5c'],['Jupiter','बृहस्पति','#ffe0b0'],['Saturn','शनि','#f0dca0']];
+const STYLES={navy:{bg0:'#0b1630',bg1:'#030712',sky0:'#0d1f45',sky1:'#050b1c',ink:'#f3ead7',gold:'#e9c37a',dim:'rgba(243,234,215,.55)',line:'rgba(150,200,255,.45)',star:'#fff'},
+  ink:{bg0:'#0b0b0c',bg1:'#000',sky0:'#121214',sky1:'#050506',ink:'#f2e6c9',gold:'#d8b46a',dim:'rgba(242,230,201,.5)',line:'rgba(216,180,106,.5)',star:'#fbf4e2'},
+  paper:{bg0:'#f6f1e6',bg1:'#efe7d6',sky0:'#11203f',sky1:'#0a1430',ink:'#1d2433',gold:'#9a6b1e',dim:'rgba(29,36,51,.6)',line:'rgba(150,200,255,.45)',star:'#fff'}};
+
+function draw(){
+  const cv=$('poster'), g=cv.getContext('2d'), W=1200, H=1680, S=STYLES[$('style').value], hi=$('lang').value==='hi';
+  const pl=place(), when=localToUTC($('date').value||today.toISOString().slice(0,10),$('time').value,pl.tz), t=A.MakeTime(when), obs=new A.Observer(pl.lat,pl.lon,0);
+  const lst=(A.SiderealTime(t)*15+pl.lon)*D, la=pl.lat*D, sinla=Math.sin(la), cosla=Math.cos(la);
+  const cx=600, cy=640, R=500;
+  const proj=(raDeg,decDeg)=>{ const H_=lst-raDeg*D, de=decDeg*D; const sa=sinla*Math.sin(de)+cosla*Math.cos(de)*Math.cos(H_); const alt=Math.asin(sa);
+    if(alt<-0.002) return null; const az=Math.atan2(-Math.cos(de)*Math.sin(H_), Math.sin(de)*cosla-Math.cos(de)*sinla*Math.cos(H_));
+    const r=R*Math.tan((Math.PI/2-alt)/2); return [cx-r*Math.sin(az), cy-r*Math.cos(az)]; };
+  // background
+  let bg=g.createLinearGradient(0,0,0,H); bg.addColorStop(0,S.bg0); bg.addColorStop(1,S.bg1); g.fillStyle=bg; g.fillRect(0,0,W,H);
+  g.strokeStyle=S.gold; g.globalAlpha=.55; g.lineWidth=2; g.strokeRect(36,36,W-72,H-72); g.lineWidth=1; g.strokeRect(46,46,W-92,H-92); g.globalAlpha=1;
+  // sky disc
+  g.save(); g.beginPath(); g.arc(cx,cy,R,0,7); g.clip();
+  const sk=g.createRadialGradient(cx,cy-60,40,cx,cy,R); sk.addColorStop(0,S.sky0); sk.addColorStop(1,S.sky1); g.fillStyle=sk; g.fillRect(cx-R,cy-R,2*R,2*R);
+  // Milky Way hint: galactic plane dots
+  g.fillStyle='rgba(200,215,255,.035)';
+  for(let l=0;l<360;l+=1.2){ for(let b=-8;b<=8;b+=4){ const lr=l*D, br=b*D; // galactic → equatorial (J2000)
+      const x=Math.cos(br)*Math.cos(lr), y=Math.cos(br)*Math.sin(lr), z=Math.sin(br);
+      const ex=-0.0548755604*x+0.4941094279*y-0.8676661490*z, ey=-0.8734370902*x-0.4448296300*y-0.1980763734*z, ez=-0.4838350155*x+0.7469822445*y+0.4559837762*z;
+      const p=proj(Math.atan2(ey,ex)/D,Math.asin(ez)/D); if(p){ g.beginPath(); g.arc(p[0],p[1],22-Math.abs(b)*1.6,0,7); g.fill(); } } }
+  // alt circles
+  g.strokeStyle=S.line; g.globalAlpha=.25; [30,60].forEach(a=>{ g.beginPath(); g.arc(cx,cy,R*Math.tan((90-a)*D/2),0,7); g.stroke(); }); g.globalAlpha=1;
+  // constellation lines
+  g.strokeStyle=S.line; g.lineWidth=1.3;
+  for(const k in SD.lines) for(const seg of SD.lines[k]){ g.beginPath(); let pen=false; for(const [ra,de] of seg){ const p=proj(ra,de); if(!p){ pen=false; continue; } pen? g.lineTo(p[0],p[1]) : g.moveTo(p[0],p[1]); pen=true; } g.stroke(); }
+  // stars
+  const st=SD.stars; for(let i=0;i<st.length;i+=4){ const m=st[i+2]; if(m>5.6) continue; const p=proj(st[i],st[i+1]); if(!p) continue;
+    const r=Math.max(.55,(6.2-m)*0.95); g.fillStyle=S.star; g.globalAlpha=Math.min(1,.35+(6-m)*.16); g.beginPath(); g.arc(p[0],p[1],r,0,7); g.fill();
+    if(m<1.5){ g.globalAlpha=.18; g.beginPath(); g.arc(p[0],p[1],r*3,0,7); g.fill(); } } g.globalAlpha=1;
+  // constellation names
+  g.textAlign='center'; g.fillStyle='rgba(190,210,240,.62)';
+  g.font=hi?'20px "Tiro Devanagari Hindi",serif':'500 14px "Orbitron",sans-serif';
+  for(const c of SD.cons){ if(c[5]>2) continue; const p=proj(c[3],c[4]); if(!p) continue; const r=Math.hypot(p[0]-cx,p[1]-cy); if(r>R-30) continue; g.fillText(hi?c[2]:c[1].toUpperCase(),p[0],p[1]); }
+  // bright star names
+  g.fillStyle=S.star; g.font='italic 15px Orbitron,sans-serif'; g.textAlign='left';
+  for(const n of SD.names){ if(n[2]>1.6) continue; const p=proj(n[0],n[1]); if(!p) continue; g.globalAlpha=.85; g.fillText(n[3],p[0]+7,p[1]-6); } g.globalAlpha=1;
+  // planets
+  const vis=[];
+  PL.forEach(([n,nh,col])=>{ const e=A.Equator(A.Body[n],t,obs,true,true); const p=proj(e.ra*15,e.dec); if(!p) return; vis.push(hi?nh:n);
+    g.fillStyle=col; g.shadowColor=col; g.shadowBlur=14; g.beginPath(); g.arc(p[0],p[1],6.5,0,7); g.fill(); g.shadowBlur=0;
+    g.font=hi?'21px "Tiro Devanagari Hindi",serif':'600 16px "Orbitron",sans-serif'; g.fillStyle=col; g.textAlign='left'; g.fillText(hi?nh:n,p[0]+11,p[1]+5); });
+  // moon
+  const me=A.Equator(A.Body.Moon,t,obs,true,true), mp=proj(me.ra*15,me.dec), phase=A.MoonPhase(t), illum=A.Illumination(A.Body.Moon,t).phase_fraction;
+  if(mp){ vis.unshift(hi?'चंद्रमा':'Moon'); moonIcon(g,mp[0],mp[1],15,phase,S); g.font=hi?'21px "Tiro Devanagari Hindi",serif':'600 16px "Orbitron",sans-serif'; g.fillStyle=S.ink; g.textAlign='left'; g.fillText(hi?'चंद्र':'Moon',mp[0]+20,mp[1]+5); }
+  g.restore();
+  // rim + compass
+  g.strokeStyle=S.gold; g.lineWidth=2.5; g.beginPath(); g.arc(cx,cy,R,0,7); g.stroke(); g.lineWidth=1; g.beginPath(); g.arc(cx,cy,R+12,0,7); g.stroke();
+  for(let a=0;a<360;a+=5){ const r0=R+(a%45?4:0), r1=R+12; g.beginPath(); g.moveTo(cx-r0*Math.sin(a*D),cy-r0*Math.cos(a*D)); g.lineTo(cx-r1*Math.sin(a*D),cy-r1*Math.cos(a*D)); g.stroke(); }
+  g.fillStyle=S.gold; g.font=hi?'24px "Tiro Devanagari Hindi",serif':'600 18px "Orbitron",sans-serif'; g.textAlign='center';
+  (hi?[['उ',0],['पू',90],['द',180],['प',270]]:[['N',0],['E',90],['S',180],['W',270]]).forEach(([l,a])=>g.fillText(l,cx-(R+34)*Math.sin(a*D),cy-(R+34)*Math.cos(a*D)+7));
+  // text block
+  const ink=S.ink, tz=pl.tz, loc=hi?'hi-IN':'en-IN';
+  g.fillStyle=ink; g.textAlign='center';
+  g.font=hi?'64px "Tiro Devanagari Hindi",serif':'600 62px Orbitron,sans-serif'; fitText(g,$('title').value||' ',cx,1258,1000);
+  if($('sub').value){ g.font=hi?'30px "Tiro Devanagari Hindi",serif':'italic 30px Orbitron,sans-serif'; g.fillStyle=S.gold; fitText(g,$('sub').value,cx,1306,980); }
+  const dstr=new Intl.DateTimeFormat(loc,{timeZone:tz,weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(when), tstr=new Intl.DateTimeFormat(loc,{timeZone:tz,hour:'numeric',minute:'2-digit'}).format(when);
+  g.fillStyle=S.dim; g.font='500 19px "Orbitron",sans-serif';
+  g.fillText(`${dstr} · ${tstr}`.toUpperCase(),cx,1356);
+  g.fillText(`${pl.name.toUpperCase()} · ${Math.abs(pl.lat).toFixed(3)}°${pl.lat>=0?'N':'S'} ${Math.abs(pl.lon).toFixed(3)}°${pl.lon>=0?'E':'W'}`,cx,1386);
+  // three facts
+  g.strokeStyle=S.gold; g.globalAlpha=.45; g.beginPath(); g.moveTo(170,1424); g.lineTo(1030,1424); g.stroke(); g.globalAlpha=1;
+  const pc=P.compute(when), vaar=P.vaar(when,tz);
+  const moonName=phaseName(phase,hi), pct=Math.round(illum*100);
+  const cols=[[hi?'चंद्रमा':'MOON', moonName, hi?`${pct}% प्रकाशित`:`${pct}% lit`],
+    [hi?'पंचांग':'PANCHANG', hi?`${pc.tithi.paksha_hi} ${pc.tithi.name_hi}`:`${pc.tithi.paksha} ${pc.tithi.name}`, hi?`${pc.nakshatra.name_hi} नक्षत्र · ${vaar.name_hi}`:`${pc.nakshatra.name} nakshatra · ${vaar.name}`],
+    [hi?'आसमान में':'ALSO UP', vis.filter(v=>v!==(hi?'चंद्रमा':'Moon')).slice(0,3).join(', ')||(hi?'कोई ग्रह नहीं':'No bright planets'), hi?`चंद्र राशि: ${pc.moonRashi.name_hi}`:`Moon in ${pc.moonRashi.name} (${pc.moonRashi.western})`]];
+  cols.forEach(([h,a,b],i)=>{ const x=240+i*360;
+    g.fillStyle=S.gold; g.font=hi?'22px "Tiro Devanagari Hindi",serif':'500 15px "Orbitron",sans-serif'; g.fillText(h.split('').join(hi?'':' '),x,1466);
+    g.fillStyle=ink; g.font=hi?'30px "Tiro Devanagari Hindi",serif':'600 26px "Orbitron",sans-serif'; fitText(g,a,x,1506,330);
+    g.fillStyle=S.dim; g.font=hi?'22px "Tiro Devanagari Hindi",serif':'17px "Orbitron",sans-serif'; fitText(g,b,x,1540,330); });
+  g.fillStyle=S.dim; g.font='500 14px "Orbitron",sans-serif'; g.fillText(hi?'STARSET · आसमान, ठीक वैसा जैसा उस पल था':'STARSET · THE SKY EXACTLY AS IT WAS',cx,1612);
+  return {when,pl};
+}
+function fitText(g,s,x,y,max){ let f=g.font; const m=/(\d+)px/.exec(f); let px=+m[1]; while(g.measureText(s).width>max&&px>12){ px-=2; g.font=f.replace(/\d+px/,px+'px'); } g.fillText(s,x,y); g.font=f; }
+function phaseName(p,hi){ const N=hi?['अमावस्या','बढ़ता अर्धचंद्र','शुक्ल अष्टमी (आधा)','बढ़ता कुबड़ा','पूर्णिमा','घटता कुबड़ा','कृष्ण अष्टमी (आधा)','घटता अर्धचंद्र']:['New Moon','Waxing crescent','First quarter','Waxing gibbous','Full Moon','Waning gibbous','Last quarter','Waning crescent']; return N[Math.round(p/45)%8]; }
+function moonIcon(g,x,y,r,phase,S){ // phase 0 new → 180 full; waxing lit on the right (northern view)
+  const k=Math.cos(phase*D), right=phase<180, dark='rgba(40,46,60,.95)', lit='#f4ecd8';
+  g.save(); g.fillStyle=dark; g.beginPath(); g.arc(x,y,r,0,7); g.fill();
+  g.fillStyle=lit; g.beginPath(); g.arc(x,y,r,-Math.PI/2,Math.PI/2,!right); g.closePath(); g.fill();   // lit half
+  g.fillStyle= k>0? dark : lit; g.beginPath(); g.ellipse(x,y,Math.abs(k)*r+.01,r,0,0,7); g.fill();  // crescent: cover; gibbous: extend
+  g.restore(); }
+
+let pending=0; function redraw(){ cancelAnimationFrame(pending); pending=requestAnimationFrame(()=>{ try{ draw(); $('msg').textContent=''; }catch(e){ $('msg').textContent='Could not draw: '+e.message; } }); }
+['title','sub','date','time','lat','lon','lang','style'].forEach(id=>$(id).addEventListener('input',redraw));
+$('city').onchange=()=>{ $('custom').hidden=$('city').value!=='x'; redraw(); };
+document.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{ const p=b.dataset.p;
+  if(p==='now'){ $('date').value=new Date().toISOString().slice(0,10); $('time').value='21:00'; $('title').value='Tonight’s sky'; $('sub').value=''; }
+  if(p==='ch3'){ $('date').value='2023-08-23'; $('time').value='18:04'; $('city').value=8; $('title').value='India reaches the Moon'; $('sub').value='Chandrayaan-3 lands near the lunar south pole'; }
+  if(p==='ind'){ $('date').value='1947-08-15'; $('time').value='00:00'; $('city').value=3; $('title').value='A tryst with destiny'; $('sub').value='Independence, midnight in Delhi'; }
+  $('custom').hidden=$('city').value!=='x'; redraw(); });
+document.fonts&&document.fonts.ready.then(redraw); redraw();
+
+$('dl').onclick=async()=>{ const {when,pl}=draw(); const name=`starset-sky-${pl.name.replace(/[^a-z0-9]+/gi,'-').toLowerCase()}-${$('date').value}.png`;
+  const blob=await new Promise(r=>$('poster').toBlob(r,'image/png'));
+  let dl=null; try{ if(window.claude&&claude.use) dl=await claude.use('downloads'); }catch(e){}
+  if(dl){ try{ await dl.save({filename:name,data:blob}); $('msg').textContent='Saved ✓'; return; }catch(e){ if(e&&e.code==='declined'){ $('msg').textContent='Download cancelled.'; return; } } }
+  try{ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove(); $('msg').textContent='Downloading… (on a phone you can also long-press the poster to save it)'; }
+  catch(e){ $('msg').textContent='Long-press or right-click the poster to save it.'; } };
+window.__story={draw};
+</script>
+</body>
+</html>
