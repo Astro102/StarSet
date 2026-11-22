@@ -52,7 +52,9 @@ a{color:inherit} button{font:inherit;color:inherit;background:none;border:0;curs
 .scrim-b{position:fixed;left:0;right:0;bottom:0;height:200px;z-index:4;pointer-events:none;background:linear-gradient(transparent,rgba(2,3,8,.85))}
 
 /* nav */
-#nav{pointer-events:none;position:fixed;top:0;left:0;right:0;z-index:20;display:flex;align-items:center;gap:12px;padding:16px 28px;background:linear-gradient(rgba(2,3,8,.75),rgba(2,3,8,0))}
+#nav{pointer-events:none;position:fixed;top:0;left:0;right:0;z-index:20;display:flex;align-items:center;gap:12px;padding:16px 28px}
+/* a long, eased fade so the bar never draws a hard line across a bright planet */
+#nav::before{content:'';position:absolute;left:0;right:0;top:0;bottom:-70px;z-index:-1;pointer-events:none;background:linear-gradient(rgba(2,3,8,.72) 0%,rgba(2,3,8,.52) 30%,rgba(2,3,8,.3) 55%,rgba(2,3,8,.13) 75%,rgba(2,3,8,.04) 90%,rgba(2,3,8,0) 100%)}
 #nav>*{pointer-events:auto}
 .logo{display:flex;align-items:center;gap:9px;font:700 17px/1 var(--display);letter-spacing:.06em;text-decoration:none;min-height:44px}
 #menuBtn{margin-left:auto;min-width:44px;justify-content:center;display:flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;border-radius:var(--r1);font:600 var(--t-sm)/1 var(--sans);color:var(--text)}
@@ -354,6 +356,75 @@ class Globe{
   }
 }
 
+/* GPU globe: the same picture as the software Globe above (texture, sunlight from the upper left, Earth's clouds and city
+   lights, a soft atmosphere rim, rings with shadows both ways), but drawn by a fragment shader every frame, so the planets
+   can spin on their own tilted axes at 60 fps at full size. Falls back to the software Globe where WebGL isn't available. */
+class GLGlobe{
+  static create(cv,o){ try{ const gl=cv.getContext('webgl',{premultipliedAlpha:true,alpha:true,antialias:false,preserveDrawingBuffer:false}); return gl? new GLGlobe(cv,gl,o) : null; }catch(e){ return null; } }
+  constructor(cv,gl,o){ this.cv=cv; this.gl=gl; Object.assign(this,{tilt:0,light:[-.62,.36,.7],ambient:.04,atmo:null,ringR:null,ringOpen:24,emissive:false,ext:null},o); this.rot=0; this.cloudRot=0;
+    const sh=(t,src)=>{ const s=gl.createShader(t); gl.shaderSource(s,src); gl.compileShader(s); if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
+    const p=this.prog=gl.createProgram(); gl.attachShader(p,sh(gl.VERTEX_SHADER,GLGlobe.VS)); gl.attachShader(p,sh(gl.FRAGMENT_SHADER,GLGlobe.FS)); gl.linkProgram(p);
+    if(!gl.getProgramParameter(p,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p)); gl.useProgram(p);
+    const b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
+    const loc=gl.getAttribLocation(p,'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+    this.u={}; for(const n of ['uMap','uClouds','uNight','uRing','uHasClouds','uHasNight','uHasRing','uEm','uRot','uCRot','uTilt','uAmb','uExt','uS','uN','uLight','uAtmo','uRingR']) this.u[n]=gl.getUniformLocation(p,n);
+    gl.uniform1i(this.u.uMap,0); gl.uniform1i(this.u.uClouds,1); gl.uniform1i(this.u.uNight,2); gl.uniform1i(this.u.uRing,3);
+    gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL,gl.NONE); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,false);
+    this.tx=[null,null,null,null]; }
+  /* planet maps wrap round in longitude: resample to power-of-two sizes so the texture can REPEAT (no seam where 360° meets 0°) */
+  static pot(img){ const W=img.width, H=img.height, p2=n=>2**Math.round(Math.log2(n)); const w=Math.min(4096,p2(W)), h=Math.min(2048,p2(H));
+    if(w===W&&h===H) return img; const a=document.createElement('canvas'); a.width=W; a.height=H; a.getContext('2d').putImageData(img,0,0);
+    const b=document.createElement('canvas'); b.width=w; b.height=h; const x=b.getContext('2d'); x.imageSmoothingQuality='high'; x.drawImage(a,0,0,w,h); return b; }
+  upload(unit,img,wrap){ const gl=this.gl; if(!img){ return 0; } let t=this.tx[unit]; if(!t){ t=this.tx[unit]=gl.createTexture(); }
+    if(wrap) img=GLGlobe.pot(img);
+    gl.activeTexture(gl.TEXTURE0+unit); gl.bindTexture(gl.TEXTURE_2D,t);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,img);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,wrap?gl.REPEAT:gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE); return 1; }
+  setTex(T,ring){ const gl=this.gl; gl.useProgram(this.prog);
+    this.upload(0,T.map,true); gl.uniform1f(this.u.uHasClouds,this.upload(1,T.clouds,true)); gl.uniform1f(this.u.uHasNight,this.upload(2,T.night,true));
+    gl.uniform1f(this.u.uHasRing,ring&&this.ringR?this.upload(3,ring):0); this.ready=true; }
+  draw(){ if(!this.ready) return; const gl=this.gl, u=this.u, S=this.cv.width; gl.viewport(0,0,S,S); gl.useProgram(this.prog);
+    for(let i=0;i<4;i++) if(this.tx[i]){ gl.activeTexture(gl.TEXTURE0+i); gl.bindTexture(gl.TEXTURE_2D,this.tx[i]); }
+    const [lx,ly,lz]=this.light, ll=Math.hypot(lx,ly,lz), ext=this.ext||(this.ringR?this.ringR[1]*1.02:1.04), ob=this.ringOpen*Math.PI/180;
+    gl.uniform1f(u.uEm,this.emissive?1:0); gl.uniform1f(u.uRot,this.rot%1); gl.uniform1f(u.uCRot,this.cloudRot%1); gl.uniform1f(u.uTilt,this.tilt); gl.uniform1f(u.uAmb,this.ambient);
+    gl.uniform1f(u.uExt,ext); gl.uniform1f(u.uS,S); gl.uniform2f(u.uN,Math.cos(ob),Math.sin(ob)); gl.uniform3f(u.uLight,lx/ll,ly/ll,lz/ll);
+    const a=this.atmo||[0,0,0]; gl.uniform3f(u.uAtmo,a[0]/255,a[1]/255,a[2]/255); gl.uniform2f(u.uRingR,...(this.ringR||[0,0]));
+    gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT); gl.drawArrays(gl.TRIANGLE_STRIP,0,4); }
+}
+GLGlobe.VS='attribute vec2 p; void main(){ gl_Position=vec4(p,0.,1.); }';
+GLGlobe.FS=`precision highp float;
+uniform sampler2D uMap,uClouds,uNight,uRing; uniform float uHasClouds,uHasNight,uHasRing,uEm,uRot,uCRot,uTilt,uAmb,uExt,uS;
+uniform vec2 uN,uRingR; uniform vec3 uLight,uAtmo;
+const float PI=3.14159265, TAU=6.28318531;
+void main(){
+  float R=uS*.5/uExt; vec2 q=(gl_FragCoord.xy/uS-.5)*2.*uExt;
+  float ct=cos(uTilt), st=sin(uTilt); float Xa=q.x*ct+q.y*st, Ya=-q.x*st+q.y*ct;
+  vec3 L=vec3(uLight.x*ct+uLight.y*st, -uLight.x*st+uLight.y*ct, uLight.z);
+  float r=length(vec2(Xa,Ya)); vec3 col=vec3(0.); float a=0., Z=0.;
+  if(r<1.+1.2/R){
+    float f=r>.99999?.99999/r:1.; float Xs=Xa*f, Ys=Ya*f; Z=sqrt(max(0.,1.-(Xs*Xs+Ys*Ys)));
+    float lat=asin(clamp(Ys,-1.,1.)), lon=atan(Xs,Z), base=lon/TAU+.5, v=.5-lat/PI;
+    vec2 uv=vec2(fract(base+uRot),v);
+    col=texture2D(uMap,uv).rgb;
+    float sh=Xs*L.x+Ys*L.y+Z*L.z, lit;
+    if(uEm>.5) lit=.5+.65*pow(Z,.45);
+    else { lit=uAmb+max(0.,sh)*1.08;
+      if(uHasRing>.5){ float ln=L.y*uN.x+L.z*uN.y; if(abs(ln)>1e-4){ float sd=-(Ys*uN.x+Z*uN.y)/ln;
+        if(sd>0.){ float qr=length(vec3(Xs,Ys,Z)+sd*L); if(qr>uRingR.x&&qr<uRingR.y) lit*=1.-texture2D(uRing,vec2((qr-uRingR.x)/(uRingR.y-uRingR.x),.5)).a*.8; } } } }
+    float ca=0.; if(uHasClouds>.5){ ca=texture2D(uClouds,vec2(fract(base+uCRot),v)).r; col+=(1.-col)*ca; }
+    col*=lit;
+    if(uHasNight>.5){ float nk=1.-smoothstep(-.22,.08,sh); if(nk>0.) col+=texture2D(uNight,uv).rgb*nk*1.3*(1.-ca*.7); }
+    if(uEm<.5||true){ float fa=pow(1.-Z,2.2)*(.15+max(0.,sh+.3)*1.1); col+=uAtmo*fa; }
+    a=clamp((1.-r)*R+.6,0.,1.);
+  }
+  if(uHasRing>.5){ float zr=-Ya*uN.x/uN.y, rr=length(vec3(Xa,Ya,zr));
+    if(rr>uRingR.x&&rr<uRingR.y&&(!(a>.5)||zr>Z)){ vec4 rc=texture2D(uRing,vec2((rr-uRingR.x)/(uRingR.y-uRingR.x),.5)); float ra=rc.a*.95;
+      float b=dot(vec3(Xa,Ya,zr),L), c=rr*rr-1., disc=b*b-c, s2=(disc>0.&&-b+sqrt(disc)>0.)?.1:1.;
+      float oa=ra+a*(1.-ra); if(oa>0.){ col=(rc.rgb*s2*ra+col*a*(1.-ra))/oa; } a=oa; } }
+  col=min(col,vec3(1.)); gl_FragColor=vec4(col*a,a);
+}`;
+
 /* texture loading: real maps from tex/, generated fallback (and Venus cloud deck) from textures.js */
 const imgCache={};
 function loadImage(src){ return imgCache[src]||(imgCache[src]=new Promise(res=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=()=>res(null); im.src=src; })); }
@@ -533,9 +604,14 @@ async function paint(L,s){ L.key=s.key; L.ready=false; L.el.style.opacity=0; con
   const o={...(CARD_OPTS[s.key]||{}),light:[-.55,.55,.63],ambient:.02};             // lit from the upper left: the Sun is behind you
   const ring=o.ring? await ringFor(s.key) : null; const T=await texOf(s.key);
   if(L.key!==s.key) return;
-  L.cv.width=L.cv.height=res; L.D=D; L.el.classList.toggle('egg',s.key==='haumea');
-  const G=new Globe(L.cv,{...o,ringR:ring&&ring.r}); if(ring) G.ring=ring.data;
-  const T2={...T}; if(!o.clouds) delete T2.clouds; G.tex=T2; G.rot=.12; G.draw(); L.ready=true; }
+  L.D=D; L.el.classList.toggle('egg',s.key==='haumea');
+  const T2={...T}; if(!o.clouds) delete T2.clouds;
+  if(L.glg===undefined){ const c=document.createElement('canvas'); const g=GLGlobe.create(c,{}); L.glg=g||null; if(g){ L.el.replaceChild(c,L.cv); L.cv=c; } }
+  L.cv.width=L.cv.height=res;
+  let G=L.glg;
+  if(G){ Object.assign(G,{tilt:0,atmo:null,ringR:null,ringOpen:24,emissive:false,ext:null},o,{ringR:ring&&ring.r}); G.setTex(T2,ring&&ring.data); G.rot=.12; G.cloudRot=.12; G.spin=o.spin||.03; G.draw(); L.g=G; }
+  else { G=new Globe(L.cv,{...o,ringR:ring&&ring.r}); if(ring) G.ring=ring.data; G.tex=T2; G.rot=.12; G.draw(); L.g=null; }
+  L.ready=true; }
 let stageList=[];
 function updateStage(){ const ship=scrollY+SHIP();
   stageList=STOPS.map(s=>({s,d:(yOf(s.a)-ship)/VH})).sort((p,q)=>Math.abs(p.d)-Math.abs(q.d)).slice(0,2).filter(x=>Math.abs(x.d)<.7);
@@ -578,9 +654,12 @@ const nextStop=()=>STOPS.find(s=>yOf(s.a)-(scrollY+SHIP())>VH*.08);
 $('hNext').onclick=()=>{ const n=nextStop(); n? go(n.key) : go('0'); };
 const io=new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting) e.target.classList.add('in'); }),{rootMargin:'-12% 0px -12% 0px'});
 document.querySelectorAll('.say,.endnote,.fly').forEach(el=>io.observe(el));
-let sunG=null;
-async function initSun(){ const cv=$('sunDisk'); const g=new Globe(cv,{...CARD_OPTS.sun,tilt:.13});
-  g.tex=await textureFor('sun',1638); g.rot=.3; g.draw(); cv.classList.add('ready'); sunG=g; }
+let sunG=null, sunGL=false;
+const SPIN_K=matchMedia('(prefers-reduced-motion: reduce)').matches?0:.7;   // turns per second = spin × this
+async function initSun(){ const cv=$('sunDisk'); const T=await textureFor('sun',1638);
+  const gg=GLGlobe.create(cv,{...CARD_OPTS.sun,tilt:.13});
+  if(gg){ gg.setTex(T); gg.rot=.3; gg.spin=CARD_OPTS.sun.spin; gg.draw(); cv.classList.add('ready'); sunG=gg; sunGL=true; return; }
+  const g=new Globe(cv,{...CARD_OPTS.sun,tilt:.13}); g.tex=T; g.rot=.3; g.draw(); cv.classList.add('ready'); sunG=g; }
 CARD_OPTS.ceres=CARD_OPTS.ceres||{spin:.06}; CARD_OPTS.pluto=CARD_OPTS.pluto||{tilt:-.3,spin:-.02};
 /* ---------- space: stars + streaking dust, the Sun shrinking behind you ---------- */
 const cv=$('space'), cx=cv.getContext('2d'); let W,H,DPR,stars=[],dust=[];
@@ -592,6 +671,9 @@ function sizeCv(){ DPR=Math.min(2,devicePixelRatio||1); W=innerWidth; H=innerHei
   dust=Array.from({length:Math.round(W*H/16000)},()=>({x:Math.random()*W,y:Math.random()*H,z:.4+Math.random()*1.4})); }
 let frameN=0, lastScrollT=0, lastY=scrollY, vel=0, lastT=performance.now(), idle=0, hudT=0;
 function frame(t){ const dt=Math.min(.1,(t-lastT)/1000)||.016; lastT=t;
+  // planets turn on their own (tilted) axes; Venus and Uranus the other way round
+  if(SPIN_K){ for(const L of layers){ const G=L.g; if(!G||!L.ready||!L.key||+L.el.style.opacity<.01) continue; G.rot+=G.spin*dt*SPIN_K; G.cloudRot+=G.spin*dt*SPIN_K*1.12; G.draw(); }
+    if(sunGL&&scrollY<innerHeight*2.2){ sunG.rot+=sunG.spin*dt*SPIN_K; sunG.draw(); } }
   const y=scrollY, dy=y-lastY; lastY=y; if(Math.abs(dy)>2) lastScrollT=t; const inst=dy/dt; vel+= (inst-vel)*Math.min(1,dt*6); if(Math.abs(dy)<.5) idle+=dt; else idle=0;
   const a=auNow();
   cx.clearRect(0,0,W,H);
