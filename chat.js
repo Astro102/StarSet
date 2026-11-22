@@ -23,7 +23,7 @@ body.astro-open #astroFab{opacity:0;pointer-events:none}
   background:rgba(10,13,19,.94);border:1px solid rgba(255,255,255,.12);box-shadow:0 24px 60px rgba(0,0,0,.6);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
   font:400 14px/1.55 Inter,system-ui,sans-serif;color:#e9edf3;transform-origin:100% 100%;transition:transform .22s cubic-bezier(.2,.8,.2,1),opacity .18s}
 #astro[hidden]{display:flex;opacity:0;transform:scale(.92) translateY(10px);pointer-events:none;visibility:hidden}
-#astro *{box-sizing:border-box} #astro button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+#astro *{box-sizing:border-box} #astro [hidden]{display:none!important} #astro button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .ax-head{display:flex;align-items:center;gap:11px;padding:12px 12px 12px 14px;border-bottom:1px solid rgba(255,255,255,.08);background:linear-gradient(180deg,rgba(60,110,200,.12),transparent)}
 .ax-head .ax-orb{width:36px;height:36px;border-radius:50%;flex:none;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,#bfe2ff,#4d8dff 45%,#1b2f6b 80%);box-shadow:0 0 14px rgba(90,160,255,.45)}
 .ax-head .ax-orb svg{width:19px;height:19px}
@@ -40,6 +40,7 @@ body.astro-open #astroFab{opacity:0;pointer-events:none}
 .ax-act{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;color:#8a94a4}
 .ax-act button{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border-radius:6px;color:#9fb3cc!important;min-height:28px} .ax-act button:hover{background:rgba(255,255,255,.07);color:#fff!important}
 .ax-act button.on{color:#ffb547!important} .ax-act svg{width:14px;height:14px}
+.ax-btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px} .ax-btns button{display:inline-flex;align-items:center;gap:6px;padding:7px 11px;border-radius:999px;border:1px solid rgba(140,190,255,.4)!important;background:rgba(124,182,255,.08)!important;color:#cfe2ff!important;font-size:12.5px!important;min-height:34px} .ax-btns button:hover{background:rgba(124,182,255,.18)!important}
 .ax-did{align-self:flex-start;font-size:12px;color:#7cb6ff;display:flex;align-items:center;gap:6px;padding:0 4px}
 .ax-dots{display:inline-flex;gap:4px;padding:4px 0} .ax-dots i{width:6px;height:6px;border-radius:50%;background:#7cb6ff;animation:axb 1s infinite ease-in-out} .ax-dots i:nth-child(2){animation-delay:.15s} .ax-dots i:nth-child(3){animation-delay:.3s}
 @keyframes axb{0%,80%,100%{opacity:.25;transform:translateY(0)}40%{opacity:1;transform:translateY(-3px)}}
@@ -102,7 +103,7 @@ body.astro-open #astroFab{opacity:0;pointer-events:none}
 
   /* ---------- state ---------- */
   let hist=ss.get('starset.astro.hist',[]);   // [{role,content,did?}]
-  let busy=false, ctrl=null, sample=null, tts=null, dict=null, speakingEl=null;
+  let busy=false, ctrl=null, sample=null, tts=null, dict=null, speakingEl=null, lite=false;
 
   /* ---------- tiny, safe markdown ---------- */
   const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -132,10 +133,12 @@ body.astro-open #astroFab{opacity:0;pointer-events:none}
       'about.html':['How does StarSet calculate planet positions?','What data sources does StarSet use?'] };
     return S[PAGE]||S['index.html']; }
   function hello(){ const d=document.createElement('div'); d.className='ax-hello';
-    d.innerHTML=`<h3>Namaste! I'm Astro 👋</h3><p>Ask me anything about planets, stars, eclipses or the night sky. I can also show you things — try “show me Saturn”.</p><div class="ax-sugs">${sugs().map(s=>`<button>${esc(s)}</button>`).join('')}</div>`;
+    d.innerHTML=`<h3>Namaste! I'm Astro 👋</h3><p>${lite?'Ask me about planets, moons, stars and eclipses — in English, Hinglish or हिंदी. I can also show you things: try “Saturn dikhao”.':'Ask me anything about planets, stars, eclipses or the night sky. I can also show you things — try “show me Saturn”.'}</p><div class="ax-sugs">${sugs().map(s=>`<button>${esc(s)}</button>`).join('')}</div>`;
     d.querySelectorAll('.ax-sugs button').forEach(b=>b.onclick=()=>send(b.textContent)); return d; }
   function bubble(m,i){ const el=document.createElement('div'); el.className='ax-m '+(m.role==='user'?'u':'a')+(m.err?' err':'');
-    if(m.role==='user') el.textContent=m.content; else { el.innerHTML=`<div class="ax-txt">${md(m.content)}</div>`; if(!m.err&&m.content) addActs(el,m); }
+    if(m.role==='user') el.textContent=m.content; else { el.innerHTML=`<div class="ax-txt">${md(m.content)}</div>`;
+      if(m.btns&&m.btns.length){ const w=document.createElement('div'); w.className='ax-btns'; m.btns.forEach(([name,args,label])=>{ const b=document.createElement('button'); b.innerHTML=label+' '+IC.go; b.onclick=()=>runAction(name,args); w.appendChild(b); }); el.appendChild(w); }
+      if(!m.err&&m.content) addActs(el,m); }
     return el; }
   function didLine(t){ const d=document.createElement('div'); d.className='ax-did'; d.innerHTML=IC.go+' '+esc(t); return d; }
   function addActs(el,m){ const a=document.createElement('div'); a.className='ax-act';
@@ -186,14 +189,20 @@ StarSet pages and features you can point to:
         pend.nav=page+h; pend.did.push(`Opening ${PAGES[page].split(' (')[0]}${anchor?' · '+anchor:''}`); return {ok:true,note:'Opens right after your reply.'}; } } ];
   let pend={did:[],nav:null};
 
-  async function send(text){ text=(text||$('axIn').value).trim(); if(!text||busy||!sample) return;
+  async function send(text){ text=(text||$('axIn').value).trim(); if(!text||busy||(!sample&&!lite)) return;
     stopSpeak(); $('axIn').value=''; grow(); hist.push({role:'user',content:text}); const L=$('axLog'); if(hist.length===1) L.innerHTML='';
     L.appendChild(bubble(hist[hist.length-1])); const msg={role:'assistant',content:''}; const el=document.createElement('div'); el.className='ax-m a'; el.innerHTML='<div class="ax-txt"><span class="ax-dots"><i></i><i></i><i></i></span></div>'; L.appendChild(el); L.scrollTop=L.scrollHeight;
     busy=true; setSend(); pend={did:[],nav:null}; ctrl=new AbortController();
     const convo=hist.slice(-14).map(m=>({role:m.role,content:m.content||'…'})); while(convo.length&&convo[0].role!=='user') convo.shift();
     const input=[{role:'user',content:RULES+'\n\n'+context()+'\n\nReply "OK" and then answer the conversation that follows.'},{role:'assistant',content:'OK'},...convo];
     let raf=0, latest=''; const paint=()=>{ raf=0; const stick=atBottom(); el.querySelector('.ax-txt').innerHTML=md(latest)||'<span class="ax-dots"><i></i><i></i><i></i></span>'; if(stick) L.scrollTop=L.scrollHeight; };
-    try{
+    if(lite){ try{ const C=window.__starsetChat||{}; const r=window.ASTRO_LITE.answer(text,{page:PAGE,visible:C.visible});
+        for(const [name,args,optional] of r.actions){ const T=TOOLS.find(x=>x.name===name); if(!T) continue;
+          if(optional){ (msg.btns=msg.btns||[]).push([name,args,btnLabel(name,args,r.lang)]); } else { try{ await T.execute(args); }catch(e){} } }
+        // reveal quickly, like typing
+        const full=r.text, step=Math.max(8,Math.ceil(full.length/10)); for(let i=step;i<full.length;i+=step){ latest=full.slice(0,i); paint(); await new Promise(z=>setTimeout(z,22)); } latest=full; paint();
+        msg.content=full; }catch(e){ msg.content='Sorry, something went wrong. Please try again.'; msg.err=true; }
+    } else try{
       const r=await sample(input,{cache:false,signal:ctrl.signal,tools:TOOLS,onText:({text})=>{ latest=(text&&!/^Thinking\W*$/i.test(text.trim()))?text:''; if(!raf) raf=requestAnimationFrame(paint); }});
       msg.content=(r&&r.text)||latest||'…'; if(r&&r.truncated) msg.content+=' …';
     }catch(e){ const code=e&&e.code;
@@ -206,11 +215,19 @@ StarSet pages and features you can point to:
     hist.push(msg); if(hist.length>40) hist=hist.slice(-40); ss.set('starset.astro.hist',hist);
     const nb=bubble(msg); if(msg.did){ const frag=document.createDocumentFragment(); msg.did.forEach(t=>frag.appendChild(didLine(t))); L.insertBefore(frag,el); } el.replaceWith(nb); L.scrollTop=L.scrollHeight;
     busy=false; ctrl=null; setSend();
-    const small=innerWidth<=600||(innerHeight<=500&&innerWidth>innerHeight);   // chat covers the screen: get out of the way so they can see it
+    afterActions();   // fly/open what was asked for; on a phone, get out of the way
+  }
+
+  function btnLabel(name,args,lang){ const hi=lang!=='en';
+    if(name==='show_body') return hi?'3D me dekho':'Show in 3D'; if(name==='find_in_sky') return hi?'Aasmaan me dekho':'Find in the sky';
+    const P={ 'eclipse.html':['Open the Eclipse page','Eclipse page kholo'], 'sky.html':[args.anchor==='panchang'?'Open the Panchang view':"Open Tonight's Sky",args.anchor==='panchang'?'Panchang kholo':"Tonight's Sky kholo"], 'light.html':['Open Light-time messages','Light-time page kholo'], 'story.html':['Make a sky poster','Sky poster banao'], 'about.html':['How StarSet is built','About page kholo'] }[args.page];
+    return P? P[hi?1:0] : (hi?'Kholo':'Open'); }
+  async function runAction(name,args){ const T=TOOLS.find(x=>x.name===name); if(!T) return; pend={did:[],nav:null}; try{ await T.execute(args); }catch(e){}
+    const L=$('axLog'); pend.did.forEach(t=>L.appendChild(didLine(t))); L.scrollTop=L.scrollHeight; afterActions(); }
+  function afterActions(){ const small=innerWidth<=600||(innerHeight<=500&&innerWidth>innerHeight);
     if(pend.did.length&&!pend.nav&&small) setTimeout(()=>{ close(); nudge(); },1300);
     if(pend.nav){ const go=pend.nav, after=pend.after; ss.set('starset.astro.open',!small); if(small) ss.set('starset.astro.nudge',true); if(after&&after.ts) ss.set('starset.astro.ts',after.ts);
-      setTimeout(()=>{ const [pg,h]=go.split('#'); if(pg===PAGE){ location.hash=h||''; } else location.href=go; },900); }
-  }
+      setTimeout(()=>{ const [pg,h]=go.split('#'); if(pg===PAGE){ location.hash=h||''; } else location.href=go; },900); } }
 
   /* ---------- voice ---------- */
   function stopSpeak(){ if(speakingEl){ speakingEl.classList.remove('on'); speakingEl.lastChild.textContent='Listen'; speakingEl=null; } try{ speechSynthesis.cancel(); }catch(e){} try{ tts&&tts.stop&&tts.stop(); }catch(e){} }
@@ -240,12 +257,27 @@ StarSet pages and features you can point to:
   }
 
   /* ---------- start: only light up when Claude is reachable ---------- */
+  /* outside claude.ai: the browser's own speech recognition (Chrome, Edge, Android) for the mic */
+  function browserMic(){ const SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR||dict) return; let rec=null;
+    dict={ start:async()=>{ rec=new SR(); rec.lang=/^hi/.test(navigator.language||'')?'hi-IN':'en-IN'; rec.interimResults=true; rec.continuous=false;
+        rec.onresult=e=>{ let fin='',par=''; for(const r of e.results){ (r.isFinal?(fin+=r[0].transcript):(par+=r[0].transcript)); } $('axIn').value=(micBase?micBase+' ':'')+(fin||par); grow(); if(fin) micBase=$('axIn').value; };
+        rec.onstart=()=>micOn(true); rec.onend=rec.onerror=()=>micOn(false); rec.start(); },
+      stop:async()=>{ try{ rec&&rec.stop(); }catch(e){} } };
+    $('axMic').hidden=false; }
+  function goLite(){ if(lite||sample) return; browserMic(); const sc=document.createElement('script'); sc.src='astro-lite.js';
+    sc.onload=()=>{ if(!window.ASTRO_LITE) return; lite=true; fab.classList.add('on');
+      box.querySelector('.ax-title span').textContent='Offline space guide · no AI needed';
+      box.querySelector('.ax-note').innerHTML='Astro Lite answers from StarSet’s own data. English, हिंदी, Hinglish — sab chalega.';
+      $('axIn').placeholder='Ask about a planet, moon or star…'; afterOpen(); };
+    document.head.appendChild(sc); }
+  function afterOpen(){ if(ss.get('starset.astro.open',false)){ open(); } else if(ss.get('starset.astro.nudge',false)){ ss.set('starset.astro.nudge',false); nudge(); }
+      const tsKey=ss.get('starset.astro.ts',null); if(tsKey&&PAGE==='simulation.html'){ ss.set('starset.astro.ts',null); const tryTS=n=>{ const C=window.__starsetChat; if(C&&C.ready&&C.ready()) C.show(tsKey,true); else if(n<60) setTimeout(()=>tryTS(n+1),250); }; tryTS(0); } }
   function boot(){ wire();
-    if(!(window.claude&&claude.use)) return;
-    claude.use('sample').then(s=>{ if(!s) return; sample=s; fab.classList.add('on');
+    if(!(window.claude&&claude.use)){ goLite(); return; }     // not inside claude.ai (e.g. GitHub Pages): the offline guide
+    claude.use('sample').then(s=>{ if(!s){ goLite(); return; } sample=s; fab.classList.add('on');
       if(ss.get('starset.astro.open',false)){ open(); } else if(ss.get('starset.astro.nudge',false)){ ss.set('starset.astro.nudge',false); nudge(); }
       const tsKey=ss.get('starset.astro.ts',null); if(tsKey&&PAGE==='simulation.html'){ ss.set('starset.astro.ts',null); const tryTS=n=>{ const C=window.__starsetChat; if(C&&C.ready&&C.ready()) C.show(tsKey,true); else if(n<60) setTimeout(()=>tryTS(n+1),250); }; tryTS(0); }
-    }).catch(()=>{});
+    }).catch(()=>goLite());
     claude.use('tts').then(t=>{ if(t&&t.speak) tts=t; }).catch(()=>{});
     claude.use('dictation').then(d=>{ if(!d) return; dict=d; $('axMic').hidden=false;
       d.onPartial(({text})=>{ $('axIn').value=(micBase?micBase+' ':'')+text; grow(); });

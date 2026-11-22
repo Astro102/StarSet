@@ -970,6 +970,7 @@ addEventListener('hashchange',openFromHash); setTimeout(openFromHash,600);
 window.__starsetChat={
   context:()=>{ const t=new Date(simMs), B=state.bodies||{}, up=BODIES.map(([n])=>[n,B[n]]).filter(([,b])=>b&&b.alt>0).map(([n,b])=>`${n} (altitude ${b.alt.toFixed(0)}°, ${compass(b.az)}${b.mag!=null?', mag '+b.mag.toFixed(1):''})`);
     return `Tonight's Sky for ${loc.name} (lat ${loc.lat.toFixed(2)}, lon ${loc.lon.toFixed(2)}). Sky shown for ${t.toString()}. Sun, Moon and planets above the horizon then: ${up.join(', ')||'none'}.`; },
+  visible:()=>{ const B=state.bodies||{}; return BODIES.map(([n])=>[n,B[n]]).filter(([,b])=>b&&b.alt>0).sort((a,b)=>(a[1].mag??0)-(b[1].mag??0)).map(([n,b])=>({name:n,alt:Math.round(b.alt),dir:compass(b.az)})); },
   find:name=>{ $('q').value=name; runSearch(); if(!hits.length){ $('q').value=''; runSearch(); return {found:false,note:'Not in the sky catalogue'}; } const h=hits[0]; choose(0);
     const b=h.data.kind==='body'&&state.bodies?state.bodies[h.data.name]:null; return {found:true,name:h.name,type:h.sub,belowHorizon:b?b.alt<0:undefined}; }
 };

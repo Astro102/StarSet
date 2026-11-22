@@ -387,6 +387,9 @@ button.list-h svg{margin-left:auto;transition:transform .2s} .grp.open button.li
 .lbl.moon,.lbl.dwarf,.lbl.craft,.lbl.comet,.lbl.belt{font-size:11.5px;letter-spacing:0;text-transform:none}
 .lbl.dwarf{color:rgba(230,235,242,.72)} .lbl.craft::before{content:'◇ ';display:inline;position:static;background:none;width:auto;height:auto}
 .lbl.belt{color:rgba(255,200,130,.6)}
+#labels .lbl.gc{pointer-events:auto;cursor:help;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,214,150,.78);display:flex;align-items:center;gap:6px}
+#labels .lbl.gc::before{content:'';display:block;position:static;width:14px;height:14px;border-radius:50%;border:1px solid rgba(255,214,150,.6);background:none}
+#labels .lbl.gc span{color:rgba(255,214,150,.5)}
 body:not(.show-craft) .lbl.craft,body:not(.show-comet) .lbl.comet,body:not(.show-belt) .lbl.belt{visibility:hidden}
 /* status + compass */
 #status{position:fixed;left:18px;bottom:22px;display:flex;gap:22px;z-index:4;font:400 12px var(--sans);color:#a7b0bd}
@@ -465,6 +468,7 @@ body:not(.show-craft) .lbl.craft,body:not(.show-comet) .lbl.comet,body:not(.show
     <label class="tg"><input type="checkbox" id="tgOrbits" checked> Orbit paths</label>
     <label class="tg"><input type="checkbox" id="tgLabels" checked> Labels</label>
     <label class="tg"><input type="checkbox" id="tgBelts" checked> Asteroid &amp; Kuiper belts</label>
+    <label class="tg"><input type="checkbox" id="tgSky" checked> Milky Way background</label>
   </div>
 </nav>
 
@@ -1534,6 +1538,7 @@ $('tbNow').onclick=()=>{ simDays=nowDays(); };
 $('tgOrbits').onchange=e=>{ orbitLines.forEach(l=>{ if(!l.userData.moonOrbit) l.visible=e.target.checked; }); kindPaths('craft',pathsOn.craft); kindPaths('comet',pathsOn.comet); showSystem(focused&&(focused.parent||focused)); };
 $('tgLabels').onchange=e=>labelsEl.style.display=e.target.checked?'':'none';
 $('tgBelts').onchange=e=>belts.forEach(b=>b.inst.visible=e.target.checked);
+$('tgSky').onchange=e=>{ if(window.__skyMesh) window.__skyMesh.visible=e.target.checked; if(window.__oldStars) window.__oldStars.visible=!e.target.checked||!window.__skyStars; };
 
 /* ---------------- search ---------------- */
 const ALIAS={sun:'surya sooraj suraj सूर्य सूरज',mercury:'budh बुध',venus:'shukra शुक्र',earth:'prithvi dharti धरती पृथ्वी',moon:'chandra chand चंद्र चाँद चांद luna',mars:'mangal मंगल red planet',
@@ -1621,6 +1626,13 @@ function updateBodies(){
   updateSmallBodies(simDays);
 }
 
+/* a quiet label on the galactic centre, so the backdrop has a real distance attached to it */
+const gcEl=document.createElement('div'); gcEl.className='lbl gc'; gcEl.title='The centre of our galaxy, about 26,000 light-years away — roughly 1.6 billion times farther than the Sun. At that distance it never shifts as you fly around the Solar System.';
+gcEl.innerHTML='Galactic centre <span>· 26,000 light-years</span>'; labelsEl.appendChild(gcEl);
+const gcV=new THREE.Vector3(); let gcOn=null;
+function placeGC(){ const show=$('tgSky').checked&&!!window.__skyMesh; gcV.copy(GC_DIR).multiplyScalar(1500).add(camera.position).project(camera);
+  const vis=show&&gcV.z<1&&Math.abs(gcV.x)<.92&&Math.abs(gcV.y)<.86; if(vis!==gcOn){ gcOn=vis; gcEl.style.display=vis?'':'none'; }
+  if(vis) gcEl.style.transform=`translate3d(${Math.round((gcV.x+1)/2*innerWidth)}px,${Math.round((1-gcV.y)/2*innerHeight)}px,0) translate(-50%,-50%)`; }
 function updateLabels(){
   if(labelsEl.style.display==='none') return;
   const camDist=camera.position.distanceTo(controls.target);
@@ -1683,6 +1695,8 @@ function tick(){
     cRing.setAttribute('transform',`rotate(${(controls.getAzimuthalAngle()*180/Math.PI).toFixed(1)} 50 50)`);
   }
   if((liveTick+=dt)>.25){ liveTick=0; updateLive(); }
+  if(window.__skyMesh) pinSky(window.__skyMesh,camera.position); if(window.__oldStars) window.__oldStars.position.copy(camera.position);
+  placeGC();
   renderer.render(scene,camera);
 }
 
@@ -1917,7 +1931,7 @@ const TS=(()=>{
       const sky=new THREE.Mesh(new THREE.SphereGeometry(1e6,48,24),new THREE.ShaderMaterial({uniforms:{map:{value:LT.sky.map}},side:THREE.BackSide,depthTest:false,depthWrite:false,toneMapped:false,
         vertexShader:'varying vec2 vUv; void main(){ vUv=uv; vec4 p=projectionMatrix*modelViewMatrix*vec4(position,1.); gl_Position=p.xyww; }',
         fragmentShader:'uniform sampler2D map; varying vec2 vUv; void main(){ gl_FragColor=vec4(texture2D(map,vUv).rgb*vec3(.8,.8,.84),1.); \n#include <colorspace_fragment>\n}'}));
-      sky.rotation.set(.05,.6,-.4); sky.renderOrder=-1; sky.frustumCulled=false; scene3.add(sky); scene3.userData.sky=sky;
+      sky.matrixAutoUpdate=false; pinSky(sky,new THREE.Vector3()); sky.renderOrder=-1; sky.frustumCulled=false; scene3.add(sky); scene3.userData.sky=sky;
       loadStarfield().then(d=>{ if(d) sky.add(makeStarPoints(d,9.5e5,TS_PR)); }); }
     scene3.add(new THREE.AmbientLight(0xffffff,.035)); const sunL=new THREE.PointLight(0xffffff,2.6,0,0); scene3.add(sunL); scene3.userData.sunL=sunL;
     // bodies
@@ -2016,7 +2030,7 @@ const TS=(()=>{
     const sun=B[0]; scene3.userData.sunL.position.copy(sun.g.position);
     const camW=cam3.position, dSun=camW.distanceTo(sun.g.position);
     sun.glow.scale.setScalar(Math.max(sun.R*7, dSun*.035));
-    if(scene3.userData.sky) scene3.userData.sky.position.copy(camW);
+    if(scene3.userData.sky) pinSky(scene3.userData.sky,camW);
     shipS.position.set(0,0,0); shipS.scale.setScalar(camW.length()*.03);
     R3.render(scene3,cam3);
     // labels: always show where things are, even when they're far smaller than a pixel
@@ -2062,6 +2076,21 @@ if(location.hash==='#truescale') setTimeout(()=>TS.show(),1500);
 
 /* go */
 log('✓ Three.js r160 loaded');
+/* The Milky Way is ~26,000 light-years away (≈1.6 billion AU): at that distance, flying around the Solar System
+   changes nothing in the background. So the sky is drawn at infinity (it follows the camera, no parallax) and turned to
+   its real orientation: galactic coordinates → equatorial (IAU J2000) → ecliptic (obliquity 23.44°) → scene axes.
+   The panorama's UVs make a mirror image when seen from inside, so the matrix includes one reflection. */
+const SKY_M=(()=>{ const T=[[-0.0548755604,-0.8734370902,-0.4838350155],[0.4941094279,-0.4448296300,0.7469822445],[-0.8676661490,-0.1980763734,0.4559837762]];
+  const e=23.4392911*DEG, ce=Math.cos(e), se=Math.sin(e);
+  const toScene=l=>{ const g=[l[0],l[2],l[1]];                                   // panorama-local → galactic (x→l=0, y↔z swap)
+    const q=[0,1,2].map(i=>T[0][i]*g[0]+T[1][i]*g[1]+T[2][i]*g[2]);                // galactic → equatorial (Tᵀ·g)
+    const ec=[q[0], q[1]*ce+q[2]*se, -q[1]*se+q[2]*ce];                            // equatorial → ecliptic
+    return [ec[0], ec[2], -ec[1]]; };                                              // ecliptic → scene (y = ecliptic north)
+  const X=toScene([1,0,0]), Y=toScene([0,1,0]), Z=toScene([0,0,1]);
+  return new THREE.Matrix4().set(X[0],Y[0],Z[0],0, X[1],Y[1],Z[1],0, X[2],Y[2],Z[2],0, 0,0,0,1); })();
+const GC_DIR=new THREE.Vector3(1,0,0).applyMatrix4(SKY_M).normalize();            // direction of the galactic centre (Sagittarius)
+function pinSky(m,at){ m.matrix.copy(SKY_M).setPosition(at); m.matrixWorldNeedsUpdate=true; }
+
 /* Crisp stars over the Milky Way panorama: 26,000 bright stars measured from the ESO photo itself (so they sit exactly on
    their blurry counterparts) plus 56,000 faint ones scattered by the band's brightness. Drawn as GPU points, so they stay
    sharp at any screen size, unlike the 4096-px panorama underneath. Decoded once from starfield.js (6 bytes per star). */
@@ -2092,10 +2121,10 @@ function makeStarPoints(data,radius,prU){
 function addSky(){
   if(!(LT.sky&&LT.sky.map)) return;
   const map=LT.sky.map; try{ map.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy()); map.needsUpdate=true; }catch(e){}
-  const sky=new THREE.Mesh(new THREE.SphereGeometry(2200,96,48),new THREE.MeshBasicMaterial({map,side:THREE.BackSide,depthWrite:false,color:new THREE.Color(.82,.82,.86),toneMapped:false}));
-  sky.rotation.set(.05,.6,-.4);   // panorama (galactic coords) turned so the Milky Way crosses the upper right of the default view
+  const sky=new THREE.Mesh(new THREE.SphereGeometry(2200,96,48),new THREE.MeshBasicMaterial({map,side:THREE.BackSide,depthWrite:false,color:new THREE.Color(.62,.62,.66),toneMapped:false}));
+  sky.matrixAutoUpdate=false; pinSky(sky,camera.position);   // real orientation, at infinity (re-pinned to the camera every frame)
   sky.renderOrder=-1; scene.add(sky); window.__skyMesh=sky;
-  loadStarfield().then(d=>{ if(!d) return; const pts=makeStarPoints(d,2150,starUniforms.uPR); sky.add(pts); window.__skyStars=pts;
+  loadStarfield().then(d=>{ if(!d) return; const pts=makeStarPoints(d,2150,starUniforms.uPR); pts.material.uniforms.uGain.value=.85; sky.add(pts); window.__skyStars=pts;
     if(window.__oldStars) window.__oldStars.visible=false; });   // real stars replace the random placeholder ones
 }
 log('… Downloading planetary surface maps');

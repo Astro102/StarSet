@@ -16,6 +16,7 @@ Open a terminal in this folder and run `python3 -m http.server 8000`, then visit
 - Planet textures: Solar System Scope (CC BY 4.0); Milky Way panorama: ESO/S. Brunier (CC BY 4.0);
   moon maps from the Celestia community (CC BY / BY-SA / CC0)
 
-## Note on Astro (the AI guide)
-Astro uses Claude through claude.ai and only appears when the site is opened inside claude.ai.
-On any other host its button stays hidden and every other feature works as normal.
+## Astro, the space guide
+Inside claude.ai, Astro answers with Claude (AI). Everywhere else, including GitHub Pages, it runs as **Astro Lite**
+(`astro-lite.js`): an offline, rule-based guide that understands English, Hinglish and Hindi, answers from StarSet's own
+planet data, and can still fly the 3D view, point the sky and open pages. No API key or server needed.
