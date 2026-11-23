@@ -1997,9 +1997,9 @@ const TS=(()=>{
       if(flight) flight=null; },{passive:false,capture:true});
     // sky
     if(LT.sky&&LT.sky.map){   // drawn first, pinned to the far plane, no depth writes: the cheapest possible full-screen pass
-      const sky=new THREE.Mesh(new THREE.SphereGeometry(1e6,48,24),makeSkyMaterial(LT.sky.map,.38));
+      const sky=new THREE.Mesh(new THREE.SphereGeometry(1e6,48,24),makeSkyMaterial(LT.sky.map,.2));
       sky.matrixAutoUpdate=false; pinSky(sky,new THREE.Vector3()); sky.renderOrder=-1; sky.frustumCulled=false; scene3.add(sky); scene3.userData.sky=sky;
-      loadStarfield().then(d=>{ if(d){ const p=makeStarPoints(d,9.5e5,TS_PR); p.material.uniforms.uGain.value=.42; sky.add(p); } }); }
+      loadStarfield().then(d=>{ if(d){ const p=makeStarPoints(d,9.5e5,TS_PR); p.material.uniforms.uGain.value=1; sky.add(p); } }); }
     scene3.add(new THREE.AmbientLight(0xffffff,.035)); const sunL=new THREE.PointLight(0xffffff,2.6,0,0); scene3.add(sunL); scene3.userData.sunL=sunL;
     // bodies
     const list=[{key:'sun',name:'Sun',R:SUN.diam/2,color:SUN.color},...PLANETS.map(p=>({key:p.key,name:p.name,R:p.diam/2,color:p.color,tilt:p.tilt,rotH:p.rotH,p})),
@@ -2213,10 +2213,10 @@ function makeStarPoints(data,radius,prU){
 function addSky(){
   if(!(LT.sky&&LT.sky.map)) return;
   const map=LT.sky.map; try{ map.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy()); map.needsUpdate=true; }catch(e){}
-  const sky=new THREE.Mesh(new THREE.SphereGeometry(2200,96,48),makeSkyMaterial(map,.32)); sky.frustumCulled=false;   // kept faint so the planets stay the heroes
+  const sky=new THREE.Mesh(new THREE.SphereGeometry(2200,96,48),makeSkyMaterial(map,.16)); sky.frustumCulled=false;   // Milky Way glow kept dim so the planets stay the heroes
   sky.matrixAutoUpdate=false; pinSky(sky,camera.position);   // real orientation, at infinity (re-pinned to the camera every frame)
   sky.renderOrder=-1; scene.add(sky); window.__skyMesh=sky;
-  loadStarfield().then(d=>{ if(!d) return; const pts=makeStarPoints(d,2150,starUniforms.uPR); pts.material.uniforms.uGain.value=.34; sky.add(pts); window.__skyStars=pts;
+  loadStarfield().then(d=>{ if(!d) return; const pts=makeStarPoints(d,2150,starUniforms.uPR); pts.material.uniforms.uGain.value=.95; sky.add(pts);   // stars stay bright and crisp window.__skyStars=pts;
     if(window.__oldStars) window.__oldStars.visible=false; });   // real stars replace the random placeholder ones
 }
 log('… Downloading planetary surface maps');
