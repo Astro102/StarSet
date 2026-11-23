@@ -46,6 +46,10 @@ a{color:inherit} button{font:inherit;color:inherit;background:none;border:0;curs
 #stage .layer{position:absolute;left:0;top:0;opacity:0;transform-origin:50% 50%;will-change:transform,opacity}
 #stage .layer canvas{width:100%;height:100%;display:block}
 #stage .layer.egg canvas{transform:scaleX(1.45) scaleY(.82)}
+body.can-grab{cursor:grab} body.grabbing,body.grabbing *{cursor:grabbing!important;user-select:none}
+#dragHint{position:fixed;left:50%;bottom:64px;transform:translate(-50%,8px);z-index:18;padding:9px 16px;border-radius:999px;background:rgba(8,12,22,.82);border:1px solid rgba(255,255,255,.14);
+  color:#dfe7f2;font:500 13px 'Exo 2',system-ui,sans-serif;letter-spacing:.02em;opacity:0;pointer-events:none;transition:opacity .4s,transform .4s;backdrop-filter:blur(8px);white-space:nowrap}
+#dragHint.on{opacity:1;transform:translate(-50%,0)} #dragHint:empty{display:none}
 .fx-vig{position:fixed;inset:0;z-index:3;pointer-events:none;background:radial-gradient(ellipse 120% 90% at 50% 45%,transparent 55%,rgba(0,0,0,.6) 100%)}
 .fx-grain{position:fixed;inset:-50%;z-index:3;pointer-events:none;opacity:.06;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");animation:grain 1.2s steps(5) infinite}
 @keyframes grain{0%{transform:translate(0,0)}20%{transform:translate(-3%,2%)}40%{transform:translate(2%,-3%)}60%{transform:translate(-2%,-2%)}80%{transform:translate(3%,3%)}100%{transform:translate(0,0)}}
@@ -217,6 +221,7 @@ body.docked .mk,body.docked .fly,body.docked .say{opacity:0!important;pointer-ev
 <div id="sunGlow" aria-hidden="true"><div class="sunwrap"><i class="corona"></i><canvas id="sunDisk" width="1152" height="1152"></canvas></div></div>
 <div id="stage" aria-hidden="true"></div>
 <div class="fx-vig" aria-hidden="true"></div><div class="fx-grain" aria-hidden="true"></div><div class="scrim-b" aria-hidden="true"></div>
+<div id="dragHint" aria-live="polite"></div>
 
 <header id="nav">
   <a class="logo" href="#top" data-go="0"><svg width="22" height="22" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="5" fill="#ffb547"/><ellipse cx="14" cy="14" rx="12.5" ry="5" fill="none" stroke="#5fd8ff" stroke-width="1.4" transform="rotate(-25 14 14)"/></svg>StarSet</a>
@@ -367,7 +372,7 @@ class GLGlobe{
     if(!gl.getProgramParameter(p,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p)); gl.useProgram(p);
     const b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
     const loc=gl.getAttribLocation(p,'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
-    this.u={}; for(const n of ['uMap','uClouds','uNight','uRing','uHasClouds','uHasNight','uHasRing','uEm','uRot','uCRot','uTilt','uAmb','uExt','uS','uN','uLight','uAtmo','uRingR']) this.u[n]=gl.getUniformLocation(p,n);
+    this.u={}; for(const n of ['uMap','uClouds','uNight','uRing','uHasClouds','uHasNight','uHasRing','uEm','uRot','uCRot','uM','uAxis','uAmb','uExt','uS','uLight','uAtmo','uRingR']) this.u[n]=gl.getUniformLocation(p,n);
     gl.uniform1i(this.u.uMap,0); gl.uniform1i(this.u.uClouds,1); gl.uniform1i(this.u.uNight,2); gl.uniform1i(this.u.uRing,3);
     gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL,gl.NONE); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,false);
     this.tx=[null,null,null,null]; }
@@ -384,43 +389,54 @@ class GLGlobe{
   setTex(T,ring){ const gl=this.gl; gl.useProgram(this.prog);
     this.upload(0,T.map,true); gl.uniform1f(this.u.uHasClouds,this.upload(1,T.clouds,true)); gl.uniform1f(this.u.uHasNight,this.upload(2,T.night,true));
     gl.uniform1f(this.u.uHasRing,ring&&this.ringR?this.upload(3,ring):0); this.ready=true; }
-  draw(){ if(!this.ready) return; const gl=this.gl, u=this.u, S=this.cv.width; gl.viewport(0,0,S,S); gl.useProgram(this.prog);
+  /* orientation: body = M · view (row-major 3×3). Default = the planet's tilt in the screen plane, with ringed planets'
+     poles leaned toward us by ringOpen so the rings show. Dragging composes extra turns onto it. */
+  resetOrient(){ const t=this.tilt||0, ct=Math.cos(t), st=Math.sin(t), ob=(this.ringR?this.ringOpen:0)*Math.PI/180, c=Math.cos(ob), s=Math.sin(ob);
+    const Rz=[ct,st,0, -st,ct,0, 0,0,1], Rx=[1,0,0, 0,c,s, 0,-s,c]; this.M=GLGlobe.mul(Rx,Rz); }
+  static mul(A,B){ const C=new Array(9); for(let i=0;i<3;i++) for(let j=0;j<3;j++) C[i*3+j]=A[i*3]*B[j]+A[i*3+1]*B[3+j]+A[i*3+2]*B[6+j]; return C; }
+  /* turn the planet in screen space about axis (ax,ay,0) by angle a: M ← M · Dᵀ */
+  turn(ax,ay,a){ if(!this.M) this.resetOrient(); const l=Math.hypot(ax,ay); if(!l||!a) return; const x=ax/l, y=ay/l, c=Math.cos(a), s=Math.sin(a), k=1-c;
+    const D=[c+x*x*k, x*y*k, y*s,  x*y*k, c+y*y*k, -x*s,  -y*s, x*s, c];
+    const Dt=[D[0],D[3],D[6], D[1],D[4],D[7], D[2],D[5],D[8]]; this.M=GLGlobe.ortho(GLGlobe.mul(this.M,Dt)); }
+  static ortho(M){ const r0=[M[0],M[1],M[2]], r1=[M[3],M[4],M[5]], n=v=>{ const l=Math.hypot(...v); return v.map(x=>x/l); }, d=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+    const a=n(r0), b0=r1.map((x,i)=>x-d(r1,a)*a[i]), b=n(b0), c=[a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]]; return [...a,...b,...c]; }
+  draw(){ if(!this.ready) return; const gl=this.gl, u=this.u, S=this.cv.width; gl.viewport(0,0,S,S); gl.useProgram(this.prog); if(!this.M) this.resetOrient();
     for(let i=0;i<4;i++) if(this.tx[i]){ gl.activeTexture(gl.TEXTURE0+i); gl.bindTexture(gl.TEXTURE_2D,this.tx[i]); }
     const [lx,ly,lz]=this.light, ll=Math.hypot(lx,ly,lz), ext=this.ext||(this.ringR?this.ringR[1]*1.02:1.04), ob=this.ringOpen*Math.PI/180;
-    gl.uniform1f(u.uEm,this.emissive?1:0); gl.uniform1f(u.uRot,this.rot%1); gl.uniform1f(u.uCRot,this.cloudRot%1); gl.uniform1f(u.uTilt,this.tilt); gl.uniform1f(u.uAmb,this.ambient);
-    gl.uniform1f(u.uExt,ext); gl.uniform1f(u.uS,S); gl.uniform2f(u.uN,Math.cos(ob),Math.sin(ob)); gl.uniform3f(u.uLight,lx/ll,ly/ll,lz/ll);
+    const M=this.M; gl.uniformMatrix3fv(u.uM,false,[M[0],M[3],M[6], M[1],M[4],M[7], M[2],M[5],M[8]]); gl.uniform3f(u.uAxis,M[3],M[4],M[5]);   // column-major; axis = body north in view space
+    gl.uniform1f(u.uEm,this.emissive?1:0); gl.uniform1f(u.uRot,this.rot%1); gl.uniform1f(u.uCRot,this.cloudRot%1); gl.uniform1f(u.uAmb,this.ambient);
+    gl.uniform1f(u.uExt,ext); gl.uniform1f(u.uS,S); gl.uniform3f(u.uLight,lx/ll,ly/ll,lz/ll);
     const a=this.atmo||[0,0,0]; gl.uniform3f(u.uAtmo,a[0]/255,a[1]/255,a[2]/255); gl.uniform2f(u.uRingR,...(this.ringR||[0,0]));
     gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT); gl.drawArrays(gl.TRIANGLE_STRIP,0,4); }
 }
 GLGlobe.VS='attribute vec2 p; void main(){ gl_Position=vec4(p,0.,1.); }';
 GLGlobe.FS=`precision highp float;
-uniform sampler2D uMap,uClouds,uNight,uRing; uniform float uHasClouds,uHasNight,uHasRing,uEm,uRot,uCRot,uTilt,uAmb,uExt,uS;
-uniform vec2 uN,uRingR; uniform vec3 uLight,uAtmo;
+uniform sampler2D uMap,uClouds,uNight,uRing; uniform float uHasClouds,uHasNight,uHasRing,uEm,uRot,uCRot,uAmb,uExt,uS;
+uniform mat3 uM; uniform vec3 uAxis; uniform vec2 uRingR; uniform vec3 uLight,uAtmo;
 const float PI=3.14159265, TAU=6.28318531;
+float ringA(float rr){ return texture2D(uRing,vec2((rr-uRingR.x)/(uRingR.y-uRingR.x),.5)).a; }
 void main(){
-  float R=uS*.5/uExt; vec2 q=(gl_FragCoord.xy/uS-.5)*2.*uExt;
-  float ct=cos(uTilt), st=sin(uTilt); float Xa=q.x*ct+q.y*st, Ya=-q.x*st+q.y*ct;
-  vec3 L=vec3(uLight.x*ct+uLight.y*st, -uLight.x*st+uLight.y*ct, uLight.z);
-  float r=length(vec2(Xa,Ya)); vec3 col=vec3(0.); float a=0., Z=0.;
+  float R=uS*.5/uExt; vec2 q=(gl_FragCoord.xy/uS-.5)*2.*uExt; vec3 L=uLight;
+  float r=length(q); vec3 col=vec3(0.); float a=0., Z=0.;
   if(r<1.+1.2/R){
-    float f=r>.99999?.99999/r:1.; float Xs=Xa*f, Ys=Ya*f; Z=sqrt(max(0.,1.-(Xs*Xs+Ys*Ys)));
-    float lat=asin(clamp(Ys,-1.,1.)), lon=atan(Xs,Z), base=lon/TAU+.5, v=.5-lat/PI;
+    float f=r>.99999?.99999/r:1.; vec3 p=vec3(q*f,0.); p.z=sqrt(max(0.,1.-dot(p.xy,p.xy))); Z=p.z;
+    vec3 b=uM*p; float lat=asin(clamp(b.y,-1.,1.)), lon=atan(b.x,b.z), base=lon/TAU+.5, v=.5-lat/PI;
     vec2 uv=vec2(fract(base+uRot),v);
     col=texture2D(uMap,uv).rgb;
-    float sh=Xs*L.x+Ys*L.y+Z*L.z, lit;
+    float sh=dot(p,L), lit;
     if(uEm>.5) lit=.5+.65*pow(Z,.45);
     else { lit=uAmb+max(0.,sh)*1.08;
-      if(uHasRing>.5){ float ln=L.y*uN.x+L.z*uN.y; if(abs(ln)>1e-4){ float sd=-(Ys*uN.x+Z*uN.y)/ln;
-        if(sd>0.){ float qr=length(vec3(Xs,Ys,Z)+sd*L); if(qr>uRingR.x&&qr<uRingR.y) lit*=1.-texture2D(uRing,vec2((qr-uRingR.x)/(uRingR.y-uRingR.x),.5)).a*.8; } } } }
+      if(uHasRing>.5){ float ln=dot(uAxis,L); if(abs(ln)>1e-4){ float sd=-dot(uAxis,p)/ln;
+        if(sd>0.){ float qr=length(p+sd*L); if(qr>uRingR.x&&qr<uRingR.y) lit*=1.-ringA(qr)*.8; } } } }
     float ca=0.; if(uHasClouds>.5){ ca=texture2D(uClouds,vec2(fract(base+uCRot),v)).r; col+=(1.-col)*ca; }
     col*=lit;
     if(uHasNight>.5){ float nk=1.-smoothstep(-.22,.08,sh); if(nk>0.) col+=texture2D(uNight,uv).rgb*nk*1.3*(1.-ca*.7); }
-    if(uEm<.5||true){ float fa=pow(1.-Z,2.2)*(.15+max(0.,sh+.3)*1.1); col+=uAtmo*fa; }
+    float fa=pow(1.-Z,2.2)*(.15+max(0.,sh+.3)*1.1); col+=uAtmo*fa;
     a=clamp((1.-r)*R+.6,0.,1.);
   }
-  if(uHasRing>.5){ float zr=-Ya*uN.x/uN.y, rr=length(vec3(Xa,Ya,zr));
+  if(uHasRing>.5&&abs(uAxis.z)>1e-3){ float zr=-(uAxis.x*q.x+uAxis.y*q.y)/uAxis.z; vec3 pr=vec3(q,zr); float rr=length(pr);
     if(rr>uRingR.x&&rr<uRingR.y&&(!(a>.5)||zr>Z)){ vec4 rc=texture2D(uRing,vec2((rr-uRingR.x)/(uRingR.y-uRingR.x),.5)); float ra=rc.a*.95;
-      float b=dot(vec3(Xa,Ya,zr),L), c=rr*rr-1., disc=b*b-c, s2=(disc>0.&&-b+sqrt(disc)>0.)?.1:1.;
+      float bb=dot(pr,L), c=rr*rr-1., disc=bb*bb-c, s2=(disc>0.&&-bb+sqrt(disc)>0.)?.1:1.;
       float oa=ra+a*(1.-ra); if(oa>0.){ col=(rc.rgb*s2*ra+col*a*(1.-ra))/oa; } a=oa; } }
   col=min(col,vec3(1.)); gl_FragColor=vec4(col*a,a);
 }`;
@@ -609,7 +625,7 @@ async function paint(L,s){ L.key=s.key; L.ready=false; L.el.style.opacity=0; con
   if(L.glg===undefined){ const c=document.createElement('canvas'); const g=GLGlobe.create(c,{}); L.glg=g||null; if(g){ L.el.replaceChild(c,L.cv); L.cv=c; } }
   L.cv.width=L.cv.height=res;
   let G=L.glg;
-  if(G){ Object.assign(G,{tilt:0,atmo:null,ringR:null,ringOpen:24,emissive:false,ext:null},o,{ringR:ring&&ring.r}); G.setTex(T2,ring&&ring.data); G.rot=.12; G.cloudRot=.12; G.spin=o.spin||.03; G.draw(); L.g=G; }
+  if(G){ Object.assign(G,{tilt:0,atmo:null,ringR:null,ringOpen:24,emissive:false,ext:null},o,{ringR:ring&&ring.r}); G.setTex(T2,ring&&ring.data); G.rot=.12; G.cloudRot=.12; G.spin=o.spin||.03; G.resetOrient(); G.w=null; G.draw(); L.g=G; }
   else { G=new Globe(L.cv,{...o,ringR:ring&&ring.r}); if(ring) G.ring=ring.data; G.tex=T2; G.rot=.12; G.draw(); L.g=null; }
   L.ready=true; }
 let stageList=[];
@@ -658,7 +674,7 @@ let sunG=null, sunGL=false;
 const SPIN_K=matchMedia('(prefers-reduced-motion: reduce)').matches?0:.35;   // turns per second = spin × this (Earth ≈ one turn a minute)
 async function initSun(){ const cv=$('sunDisk'); const T=await textureFor('sun',1638);
   const gg=GLGlobe.create(cv,{...CARD_OPTS.sun,tilt:.13});
-  if(gg){ gg.setTex(T); gg.rot=.3; gg.spin=CARD_OPTS.sun.spin; gg.draw(); cv.classList.add('ready'); sunG=gg; sunGL=true; return; }
+  if(gg){ gg.setTex(T); gg.rot=.3; gg.spin=CARD_OPTS.sun.spin; gg.resetOrient(); gg.draw(); cv.classList.add('ready'); sunG=gg; sunGL=true; return; }
   const g=new Globe(cv,{...CARD_OPTS.sun,tilt:.13}); g.tex=T; g.rot=.3; g.draw(); cv.classList.add('ready'); sunG=g; }
 CARD_OPTS.ceres=CARD_OPTS.ceres||{spin:.06}; CARD_OPTS.pluto=CARD_OPTS.pluto||{tilt:-.3,spin:-.02};
 /* ---------- space: stars + streaking dust, the Sun shrinking behind you ---------- */
@@ -672,8 +688,8 @@ function sizeCv(){ DPR=Math.min(2,devicePixelRatio||1); W=innerWidth; H=innerHei
 let frameN=0, lastScrollT=0, lastY=scrollY, vel=0, lastT=performance.now(), idle=0, hudT=0;
 function frame(t){ const dt=Math.min(.1,(t-lastT)/1000)||.016; lastT=t;
   // planets turn on their own (tilted) axes; Venus and Uranus the other way round
-  if(SPIN_K){ for(const L of layers){ const G=L.g; if(!G||!L.ready||!L.key||+L.el.style.opacity<.01) continue; G.rot+=G.spin*dt*SPIN_K; G.cloudRot+=G.spin*dt*SPIN_K*1.12; G.draw(); }
-    if(sunGL&&scrollY<innerHeight*2.2){ sunG.rot+=sunG.spin*dt*SPIN_K; sunG.draw(); } }
+  for(const L of layers){ const G=L.g; if(!G||!L.ready||!L.key||+L.el.style.opacity<.01) continue; G.rot+=G.spin*dt*SPIN_K; G.cloudRot+=G.spin*dt*SPIN_K*1.12; coast(G,dt); if(SPIN_K||G.dirty){ G.draw(); G.dirty=false; } }
+  if(sunGL&&scrollY<innerHeight*2.2){ sunG.rot+=sunG.spin*dt*SPIN_K; coast(sunG,dt); if(SPIN_K||sunG.dirty){ sunG.draw(); sunG.dirty=false; } }
   const y=scrollY, dy=y-lastY; lastY=y; if(Math.abs(dy)>2) lastScrollT=t; const inst=dy/dt; vel+= (inst-vel)*Math.min(1,dt*6); if(Math.abs(dy)<.5) idle+=dt; else idle=0;
   const a=auNow();
   cx.clearRect(0,0,W,H);
@@ -728,7 +744,40 @@ addEventListener('keydown',e=>{ if(e.key==='Escape'&&!menu.hidden) closeMenu(); 
 function fpsUI(){ const on=window.StarSetFPS&&StarSetFPS.on; $('fpsState').textContent=on?'on':'off'; }
 $('fpsToggle').onclick=()=>{ if(window.StarSetFPS) StarSetFPS.set(!StarSetFPS.on); };
 addEventListener('load',fpsUI);
-window.__journey={layout,go,auNow,U:()=>U,openMenu,stage:()=>stageList.map(x=>[x.s.key,+x.d.toFixed(2)])};
+/* ---- grab a planet: drag to turn it any way (free rotation), let go and it coasts; double-click to set it straight.
+   It keeps spinning on its own axis, wherever you have pointed that axis. On touch, sideways swipes turn the planet and
+   up/down swipes still scroll the journey. ---- */
+const DRAG={g:null,x:0,y:0,t:0,w:null,touch:null};
+const NOGRAB='a,button,input,select,textarea,label,#panel,#panelPill,#menu,#nav,#tl,#astro,#astroFab,.tlink,.btn';
+function diskAt(x,y){
+  const hit=(g,cv)=>{ const r=cv.getBoundingClientRect(); if(!r.width) return null; const ext=g.ext||(g.ringR?g.ringR[1]*1.02:1.04);
+    const R=r.width/2/ext*1.03, dx=x-(r.left+r.width/2), dy=y-(r.top+r.height/2); return dx*dx+dy*dy<R*R? {g,R} : null; };
+  for(const L of layers){ if(!L.g||!L.ready||!L.key||+L.el.style.opacity<.5) continue; const h=hit(L.g,L.cv); if(h) return h; }
+  if(sunGL&&scrollY<innerHeight*1.2){ const h=hit(sunG,$('sunDisk')); if(h) return h; }
+  return null; }
+function coast(G,dt){ if(G.w&&DRAG.g!==G){ G.turn(G.w[0],G.w[1],G.w[2]*dt); G.w[2]*=Math.pow(.06,dt); if(Math.abs(G.w[2])<.03) G.w=null; G.dirty=true; } }
+function dragTo(x,y){ const d=DRAG, dx=x-d.x, dy=y-d.y; if(!dx&&!dy) return; const now=performance.now(), a=Math.hypot(dx,dy)/d.R*1.1;
+  d.g.turn(dy,dx,a); d.g.dirty=true; d.g.w=null; const dt=Math.max(.008,(now-d.t)/1000); d.w=[dy,dx,Math.min(9,a/dt)]; d.x=x; d.y=y; d.t=now; }
+function dragEnd(){ const d=DRAG; if(!d.g) return; if(d.w&&performance.now()-d.t<90) d.g.w=d.w; d.g=null; d.w=null; document.body.classList.remove('grabbing'); }
+addEventListener('pointerdown',e=>{ if(e.pointerType!=='mouse'||e.button!==0||e.target.closest(NOGRAB)) return; const h=diskAt(e.clientX,e.clientY); if(!h) return;
+  e.preventDefault(); Object.assign(DRAG,{g:h.g,R:h.R,x:e.clientX,y:e.clientY,t:performance.now(),w:null}); h.g.w=null; document.body.classList.add('grabbing'); dragHintDone(); },true);
+addEventListener('pointermove',e=>{ if(DRAG.g&&e.pointerType==='mouse'){ dragTo(e.clientX,e.clientY); return; }
+  if(e.pointerType==='mouse'&&!e.buttons){ const over=!e.target.closest(NOGRAB)&&!!diskAt(e.clientX,e.clientY); document.body.classList.toggle('can-grab',over); } },{passive:true});
+addEventListener('pointerup',dragEnd); addEventListener('blur',dragEnd);
+addEventListener('dblclick',e=>{ if(e.target.closest(NOGRAB)) return; const h=diskAt(e.clientX,e.clientY); if(h){ h.g.w=null; h.g.resetOrient(); h.g.dirty=true; } });
+// touch: decide on the first move — sideways turns the planet, up/down scrolls the page
+addEventListener('touchstart',e=>{ if(e.touches.length!==1||e.target.closest(NOGRAB)) return; const t=e.touches[0], h=diskAt(t.clientX,t.clientY); DRAG.touch=h?{h,x:t.clientX,y:t.clientY,mode:null}:null; },{passive:true});
+addEventListener('touchmove',e=>{ const T=DRAG.touch; if(!T) return; const t=e.touches[0];
+  if(!T.mode){ const dx=t.clientX-T.x, dy=t.clientY-T.y; if(Math.hypot(dx,dy)<4) return; T.mode=Math.abs(dx)>Math.abs(dy)?'turn':'scroll';
+    if(T.mode==='turn'){ Object.assign(DRAG,{g:T.h.g,R:T.h.R,x:T.x,y:T.y,t:performance.now(),w:null}); T.h.g.w=null; dragHintDone(); } }
+  if(T.mode==='turn'){ if(e.cancelable) e.preventDefault(); dragTo(t.clientX,t.clientY); } },{passive:false});
+addEventListener('touchend',()=>{ if(DRAG.touch&&DRAG.touch.mode==='turn') dragEnd(); DRAG.touch=null; });
+addEventListener('touchcancel',()=>{ dragEnd(); DRAG.touch=null; });
+// a one-time hint the first time a planet fills the stage
+let dragHintShown=false; try{ dragHintShown=localStorage.getItem('starset.dragHint')==='1'; }catch(e){}
+function dragHintDone(){ $('dragHint').classList.remove('on'); if(dragHintShown) return; dragHintShown=true; try{ localStorage.setItem('starset.dragHint','1'); }catch(e){} }
+setInterval(()=>{ if(dragHintShown) return; if(layers.some(L=>L.g&&L.ready&&+L.el.style.opacity>.8)){ const h=$('dragHint'); h.textContent=matchMedia('(pointer:coarse)').matches?'Swipe sideways on a planet to turn it':'Drag a planet to turn it · double-click to reset'; h.classList.add('on'); dragHintShown=true; try{ localStorage.setItem('starset.dragHint','1'); }catch(e){} setTimeout(()=>h.classList.remove('on'),5000); } },700);
+window.__journey={layout,go,auNow,U:()=>U,openMenu,stage:()=>stageList.map(x=>[x.s.key,+x.d.toFixed(2)]),diskAt,drag:DRAG};
 
 </script>
 </body>
