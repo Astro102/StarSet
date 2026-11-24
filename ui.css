@@ -61,15 +61,15 @@
 }
 
 /* "Start the journey": on hover (or keyboard focus) a little Solar System flows in behind the label in 0.9 s —
-   the Sun at the left edge, planets circling it on their orbits. */
+   the Sun in the centre, planets circling it on tilted orbits; the border fades away. */
 .btn.jbtn{position:relative;overflow:hidden;isolation:isolate;transition:background-color .9s cubic-bezier(.2,.7,.2,1),color .9s cubic-bezier(.2,.7,.2,1),border-color .9s,box-shadow .9s,transform .1s ease}
 .jbtn .jtx{position:relative;z-index:1}
-.jss{position:absolute;inset:0;z-index:0;pointer-events:none;opacity:0;transform:translateX(-40%) scale(1.08);transform-origin:left center;
+.jss{position:absolute;inset:0;z-index:0;pointer-events:none;opacity:0;transform:scale(.55);transform-origin:center;
   transition:opacity .9s cubic-bezier(.2,.7,.2,1),transform .9s cubic-bezier(.2,.7,.2,1);
   background:radial-gradient(1px 1px at 72% 28%,#fff,transparent),radial-gradient(1px 1px at 88% 70%,rgba(255,255,255,.8),transparent),radial-gradient(1px 1px at 55% 80%,rgba(255,255,255,.6),transparent),radial-gradient(1px 1px at 94% 22%,rgba(255,255,255,.7),transparent),
-    radial-gradient(130% 160% at 0% 50%,#1d2848 0%,#0b1122 55%,#05070e 100%)}
-.jss b{position:absolute;left:-12px;top:50%;width:30px;height:30px;margin-top:-15px;border-radius:50%;background:radial-gradient(circle at 40% 40%,#fff7d6,#ffbf55 50%,#e8761a);box-shadow:0 0 16px 5px rgba(255,170,60,.5)}
-.jss i{--k:.3;position:absolute;left:3px;top:50%;width:calc(var(--r) * 2);height:calc(var(--r) * 2 * var(--k));margin:calc(var(--r) * var(--k) * -1) 0 0 calc(var(--r) * -1);
+    radial-gradient(90% 160% at 50% 50%,#1d2848 0%,#0b1122 55%,#05070e 100%)}
+.jss b{position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:radial-gradient(circle at 40% 40%,#fff7d6,#ffbf55 50%,#e8761a);box-shadow:0 0 14px 4px rgba(255,170,60,.45)}
+.jss i{--k:.3;position:absolute;left:50%;top:50%;width:calc(var(--r) * 2);height:calc(var(--r) * 2 * var(--k));margin:calc(var(--r) * var(--k) * -1) 0 0 calc(var(--r) * -1);
   border-radius:50%;border:1px solid rgba(170,205,255,.2)}
 /* each planet runs round its (tilted, so elliptical) orbit: side-to-side and up-and-down eased motions a quarter-turn apart */
 .jss u{position:absolute;left:0;top:50%;width:0;height:0;animation:jx calc(var(--t) / 2) ease-in-out var(--d) infinite alternate;animation-play-state:paused}
@@ -77,7 +77,8 @@
   animation:jy calc(var(--t) / 2) ease-in-out calc(var(--d) - var(--t) / 4) infinite alternate;animation-play-state:inherit}
 @keyframes jx{from{left:0}to{left:100%}}
 @keyframes jy{from{transform:translate(-50%,calc(-50% - var(--r) * var(--k)))}to{transform:translate(-50%,calc(-50% + var(--r) * var(--k)))}}
-.btn.jbtn:hover,.btn.jbtn:focus-visible{background:#0b1122;color:#fff;border-color:rgba(255,181,71,.55);box-shadow:0 0 0 1px rgba(255,181,71,.25),0 8px 24px rgba(0,0,0,.45)}
+.btn.jbtn:hover,.btn.jbtn:focus-visible{background:#0b1122;color:#fff;border-color:transparent;box-shadow:0 8px 24px rgba(0,0,0,.45)}
+.jbtn .jtx{transition:text-shadow .9s} .jbtn:hover .jtx,.jbtn:focus-visible .jtx{text-shadow:0 1px 3px rgba(0,0,0,.9),0 0 12px rgba(5,7,14,.85)}
 .jbtn:hover .jss,.jbtn:focus-visible .jss{opacity:1;transform:none}
 .jbtn:hover .jss u,.jbtn:focus-visible .jss u{animation-play-state:running}
 @media (prefers-reduced-motion:reduce){ .jss u,.jss u::after{animation:none} .jss{transform:none} }
