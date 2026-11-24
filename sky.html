@@ -209,15 +209,17 @@ details.fest[open] summary::before{content:'－ '} details.fest p{font-size:12.5
 <script src="perf.js" defer></script>
 <script src="chat.js" defer></script>
 <script src="site.js" defer></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="ui.css">
 </head>
 <body>
 <canvas id="sky"></canvas>
 <div id="labels"></div>
 
 <header id="top" class="panel">
-  <a class="nb" href="index.html">← HOME</a>
+  <a class="nb" href="index.html">← Home</a>
   <div id="brand"><i></i>TONIGHT'S SKY <small>// STARSET</small></div>
-  <a class="nb opt" href="simulation.html">3D SOLAR SYSTEM ↗</a>
+  <a class="nb opt" href="simulation.html">3D Solar System ↗</a>
   <div id="clock"><div class="t" id="tLocal">—</div><div class="s" id="tSub">—</div></div>
 </header>
 
@@ -226,7 +228,7 @@ details.fest[open] summary::before{content:'－ '} details.fest p{font-size:12.5
   <div class="loc">
     <span class="tag">Your location</span>
     <select id="city"></select>
-    <div class="custom" id="custom"><input id="lat" placeholder="Lat e.g. 19.07" inputmode="decimal"><input id="lon" placeholder="Lon e.g. 72.88" inputmode="decimal"><button id="go">SET</button></div>
+    <div class="custom" id="custom"><input id="lat" placeholder="Lat e.g. 19.07" inputmode="decimal"><input id="lon" placeholder="Lon e.g. 72.88" inputmode="decimal"><button id="go">Set</button></div>
   </div>
   <p id="sunline">—</p>
   <span class="tag">Sun, Moon &amp; planets</span>
@@ -246,7 +248,7 @@ details.fest[open] summary::before{content:'－ '} details.fest p{font-size:12.5
 <aside id="pan" class="panel" aria-label="Panchang">
   <div class="ph"><h2>Panchang <small id="panWhen"></small></h2><button class="x" id="panX">✕</button></div>
   <div id="panBody"></div>
-  <div class="btnrow"><button class="pb pri" id="panShow">SHOW IN THE SKY ✦</button><button class="pb" id="panNow">NOW</button></div>
+  <div class="btnrow"><button class="pb pri" id="panShow">Show in the sky</button><button class="pb" id="panNow">Now</button></div>
   <div class="why" id="panWhy"></div>
   <h3>Coming up</h3><div id="panEv"></div>
   <h3>The astronomy behind festivals</h3><div id="panFest"></div>
@@ -260,25 +262,25 @@ details.fest[open] summary::before{content:'－ '} details.fest p{font-size:12.5
 </aside>
 
 <div id="bar" class="panel">
-  <button class="tb" data-step="-86400">−1 DAY</button>
-  <button class="tb" data-step="-3600">−1 H</button>
+  <button class="tb" data-step="-86400">−1 day</button>
+  <button class="tb" data-step="-3600">−1 h</button>
   <button class="tb" id="play" title="Play / pause (space)">▶</button>
-  <button class="tb" data-step="3600">+1 H</button>
-  <button class="tb" data-step="86400">+1 DAY</button>
+  <button class="tb" data-step="3600">+1 h</button>
+  <button class="tb" data-step="86400">+1 day</button>
   <span class="sep"></span>
   <button class="tb" data-speed="60">1 min/s</button>
   <button class="tb on" data-speed="600">10 min/s</button>
   <button class="tb" data-speed="3600">1 h/s</button>
   <span class="sep"></span>
-  <button class="tb amber" id="now">NOW</button>
-  <button class="tb amber" id="tonight">TONIGHT 9 PM</button>
+  <button class="tb amber" id="now">Now</button>
+  <button class="tb amber" id="tonight">Tonight 9 pm</button>
   <span class="sep"></span>
   <input type="datetime-local" id="dt" aria-label="Pick date and time">
 </div>
 <div id="search"><input id="q" type="search" placeholder="Search star, planet, constellation…" autocomplete="off" aria-label="Search the sky"><div id="results" class="panel"></div></div>
 <div id="ret" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
 <div id="cross" aria-hidden="true"></div>
-<div id="gyroBadge" class="panel">🧭 COMPASS MODE · facing <b id="gHead">—</b><button id="gOff">EXIT</button></div>
+<div id="gyroBadge" class="panel">🧭 COMPASS MODE · facing <b id="gHead">—</b><button id="gOff">Exit</button></div>
 <div id="gmodal"><div id="gcard" class="panel">
   <button class="gclose" id="gClose">✕</button>
   <h3 id="gTitle">Point your phone at the sky</h3>

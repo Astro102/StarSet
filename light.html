@@ -58,15 +58,17 @@ form{display:flex;gap:6px;margin:12px 0 6px}
 <script src="perf.js" defer></script>
 <script src="chat.js" defer></script>
 <script src="site.js" defer></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="ui.css">
 </head>
 <body>
 <canvas id="cv" aria-label="Logarithmic map of how far each light-speed message has travelled"></canvas>
 <aside id="side" class="panel">
-  <div style="display:flex;gap:8px"><a class="nb" href="index.html">← HOME</a><a class="nb" href="sky.html">SKY ↗</a></div>
+  <div style="display:flex;gap:8px"><a class="nb" href="index.html">← Home</a><a class="nb" href="sky.html">Sky ↗</a></div>
   <h1>Send a message at the speed of light.</h1>
   <p>Nothing travels faster. Type anything and watch it race past the Moon, the planets and the Voyager probes — in real time. It keeps going even after you close this page.</p>
   <form id="f"><input id="msg" maxlength="140" placeholder="Hello from Mira Road!" aria-label="Your message"><button class="go">SEND ⟶</button></form>
-  <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="pb" id="demo">TRY: SENT 1 HOUR AGO</button><button class="pb" id="clear">CLEAR MINE</button></div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="pb" id="demo">Try: sent 1 hour ago</button><button class="pb" id="clear">Clear mine</button></div>
   <div id="list"></div>
   <div id="bday"><span>Light from the year you were born:</span><input id="by" type="number" min="1900" max="2026" placeholder="e.g. 2000"></div>
   <p class="fine">Distances to the Moon, Sun and planets are computed live for this moment. Spacecraft distances are approximate. The scale is logarithmic: each step to the right is ten times farther.</p>

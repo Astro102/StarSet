@@ -1,0 +1,61 @@
+/* StarSet buttons — one modern system for every page. Loaded last in <head>, so it restyles each page's own button classes.
+   Primary = solid amber, no glow.  Secondary = quiet glass.  Selected = cyan tint.  Inter, sentence case, no letter-spacing. */
+:root{
+  --ui-font:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --ui-amber:#ffb547; --ui-amber-hi:#ffc670; --ui-amber-ink:#1b1100;
+  --ui-fill:rgba(255,255,255,.05); --ui-fill-hi:rgba(255,255,255,.1);
+  --ui-line:rgba(255,255,255,.12); --ui-line-hi:rgba(255,255,255,.24);
+  --ui-text:#e6edf6; --ui-sel:rgba(95,216,255,.16); --ui-sel-line:rgba(95,216,255,.55); --ui-sel-text:#8fe4ff;
+}
+
+/* ---------- secondary & toolbar buttons ---------- */
+.nb,.tb,.pb,.sty,
+#skyBtn,#tsBtn,#tourBtn,#quizBtn,#shareBtn,#musicBtn,
+.btn:not(.primary):not(.pri){
+  font-family:var(--ui-font)!important; font-weight:500; letter-spacing:0!important; text-transform:none!important;
+  border:1px solid var(--ui-line); background:var(--ui-fill); color:var(--ui-text); border-radius:8px;
+  box-shadow:none; text-shadow:none; cursor:pointer;
+  transition:background-color .15s ease,border-color .15s ease,color .15s ease,transform .1s ease;
+}
+.nb,.pb{font-size:13px; line-height:1.2}
+.nb{display:inline-flex; align-items:center; gap:6px; padding:7px 12px}
+.nb:hover,.tb:hover,.pb:hover,.sty:hover,
+#skyBtn:hover,#tsBtn:hover,#tourBtn:hover,#quizBtn:hover,#shareBtn:hover,#musicBtn:hover,
+.btn:not(.primary):not(.pri):hover{background:var(--ui-fill-hi); border-color:var(--ui-line-hi); color:#fff}
+
+/* selected / on */
+.tb.on,.pb.on,.sty.on,#tsBtn.on,#musicBtn[aria-pressed="true"]{background:var(--ui-sel); border-color:var(--ui-sel-line); color:var(--ui-sel-text)}
+.tb.on:hover,.pb.on:hover{background:rgba(95,216,255,.24); color:#b5eeff}
+/* amber accent (Now, Tonight) */
+.tb.amber{color:var(--ui-amber); border-color:rgba(255,181,71,.35); background:rgba(255,181,71,.06)}
+.tb.amber:hover{background:rgba(255,181,71,.14); border-color:rgba(255,181,71,.6); color:var(--ui-amber-hi)}
+
+/* ---------- primary buttons ---------- */
+.btn.primary,.btn.pri,.pb.pri,.go,.launch,#tsGo{
+  font-family:var(--ui-font)!important; font-weight:600; letter-spacing:0!important; text-transform:none!important;
+  background:var(--ui-amber); border:1px solid transparent; color:var(--ui-amber-ink); border-radius:10px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 1px 2px rgba(0,0,0,.35); text-shadow:none;
+  transition:background-color .15s ease,transform .1s ease,box-shadow .15s ease;
+}
+.btn.primary:hover,.btn.pri:hover,.pb.pri:hover,.go:hover,.launch:hover,#tsGo:hover{background:var(--ui-amber-hi); color:var(--ui-amber-ink); transform:none}
+.pb.pri{border-radius:8px}
+
+/* links that act as buttons */
+.tlink,.tmore,.more,.tryastro{font-family:var(--ui-font)!important; letter-spacing:0!important; text-transform:none!important; text-shadow:none}
+
+/* pressed + keyboard focus, everywhere */
+.nb:active,.tb:active,.pb:active,.sty:active,.btn:active,.go:active,.launch:active,#tsGo:active,
+#skyBtn:active,#tsBtn:active,#tourBtn:active,#quizBtn:active,#shareBtn:active,#musicBtn:active{transform:scale(.97)}
+.nb:focus-visible,.tb:focus-visible,.pb:focus-visible,.sty:focus-visible,.btn:focus-visible,.go:focus-visible,.launch:focus-visible,.tlink:focus-visible,
+#skyBtn:focus-visible,#tsBtn:focus-visible,#tourBtn:focus-visible,#quizBtn:focus-visible,#shareBtn:focus-visible,#musicBtn:focus-visible,#tsGo:focus-visible{outline:2px solid #5fd8ff; outline-offset:2px}
+.tb:disabled,.pb:disabled,.btn:disabled{opacity:.4; cursor:default; transform:none}
+
+@media (max-width:600px){ .nb,.pb{font-size:12px} }
+@media (prefers-reduced-motion:reduce){ .nb,.tb,.pb,.btn,.go,.launch{transition:none} }
+
+/* 3D view on narrow phones: Tours and Quiz shrink to icons — line icons, not emoji */
+@media (max-width:440px){
+  #tourBtn::after,#quizBtn::after{content:''!important;display:inline-block;width:16px;height:16px;background:currentColor;-webkit-mask:var(--ic) center/contain no-repeat;mask:var(--ic) center/contain no-repeat}
+  #tourBtn{--ic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M4 14v-2a8 8 0 0 1 16 0v2'/%3E%3Crect x='3' y='14' width='4' height='6' rx='1.5'/%3E%3Crect x='17' y='14' width='4' height='6' rx='1.5'/%3E%3C/svg%3E")}
+  #quizBtn{--ic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z'/%3E%3Cpath d='M17 6h3v1a3 3 0 0 1-3 3M7 6H4v1a3 3 0 0 0 3 3'/%3E%3C/svg%3E")}
+}

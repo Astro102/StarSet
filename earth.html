@@ -116,6 +116,8 @@ button,input{font:inherit;color:inherit} button{background:none;border:0;cursor:
 <script src="perf.js" defer></script>
 <script src="chat.js" defer></script>
 <script src="site.js" defer></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="ui.css">
 </head>
 <body>
 <div id="space"></div>
@@ -287,8 +289,8 @@ function showCard(o){
   $('cType').textContent=o.type; $('cName').textContent=o.name; $('cText').textContent=o.text||''; $('cCo').textContent=o.lat!=null?fmtLL(o.lat,o.lon):'';
   const acts=[];
   if(o.lat!=null){ acts.push(`<a href="sky.html" title="Opens Tonight’s Sky">SKY FROM HERE ✦</a>`);
-    acts.push(`<a href="https://www.openstreetmap.org/?mlat=${o.lat}&mlon=${o.lon}#map=17/${o.lat}/${o.lon}" target="_blank" rel="noopener">OPENSTREETMAP ↗</a>`);
-    acts.push(`<button id="cCopy">COPY COORDS</button>`); }
+    acts.push(`<a href="https://www.openstreetmap.org/?mlat=${o.lat}&mlon=${o.lon}#map=17/${o.lat}/${o.lon}" target="_blank" rel="noopener">OpenStreetMap ↗</a>`);
+    acts.push(`<button id="cCopy">Copy coordinates</button>`); }
   $('cActs').innerHTML=acts.join(''); $('card').classList.add('on');
   const sk=$('cActs').querySelector('a[href="sky.html"]');
   if(sk) sk.onclick=()=>{ try{ localStorage.setItem('starset.loc',JSON.stringify({name:o.name.slice(0,40),lat:+o.lat.toFixed(3),lon:+o.lon.toFixed(3),tz:Intl.DateTimeFormat().resolvedOptions().timeZone})); }catch(e){} };

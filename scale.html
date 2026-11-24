@@ -55,18 +55,20 @@ tr.hl{background:rgba(95,216,255,.07)} tr{cursor:pointer}
 <script src="perf.js" defer></script>
 <script src="chat.js" defer></script>
 <script src="site.js" defer></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="ui.css">
 </head>
 <body>
 <div id="map" aria-label="Map with the Solar System drawn to scale"></div>
 <aside id="side" class="panel">
-  <div class="top"><a class="nb" href="index.html">← HOME</a><a class="nb" href="simulation.html">3D ↗</a></div>
+  <div class="top"><a class="nb" href="index.html">← Home</a><a class="nb" href="simulation.html">3D view ↗</a></div>
   <span class="tag">Solar System on your street</span>
   <h1>Put the Sun on your building.</h1>
   <p class="lead">Everything below is drawn to the same true scale — sizes <i>and</i> distances — with the planets where they really are today. Drag the Sun anywhere, or tap the map to move it.</p>
   <div class="ctl">
     <label><span class="tag">If the Sun were…</span><select id="size"></select></label>
     <label><span class="tag">Place it at</span><select id="place"></select></label>
-    <div class="row"><button class="pb" id="fitIn">INNER PLANETS</button><button class="pb" id="fitAll">ALL PLANETS</button><button class="pb" id="me">MY LOCATION</button></div>
+    <div class="row"><button class="pb" id="fitIn">Inner planets</button><button class="pb" id="fitAll">All planets</button><button class="pb" id="me">My location</button></div>
   </div>
   <table><thead><tr><th>Body</th><th>Would be</th><th>Distance</th><th>Walk</th></tr></thead><tbody id="tb"></tbody></table>
   <div class="wow" id="wow"></div>

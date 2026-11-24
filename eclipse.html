@@ -73,14 +73,16 @@ button,select,input{font:inherit;color:inherit} button{background:none;border:0;
 <script src="perf.js" defer></script>
 <script src="chat.js" defer></script>
 <script src="site.js" defer></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="ui.css">
 </head>
 <body>
 <div id="space"></div>
 <div id="map" aria-label="Globe showing where the eclipse is visible"></div>
 <header id="top" class="panel">
-  <a class="nb" href="index.html">← HOME</a>
+  <a class="nb" href="index.html">← Home</a>
   <div id="brand"><i></i>ECLIPSE TWIN VIEW <small>// STARSET</small></div>
-  <a class="nb opt" href="sky.html">TONIGHT’S SKY ↗</a>
+  <a class="nb opt" href="sky.html">Tonight’s sky ↗</a>
   <select id="city" aria-label="Watch from"></select>
 </header>
 <aside id="list" class="panel"><h2>Upcoming eclipses</h2><div id="ecl"></div></aside>
@@ -88,10 +90,10 @@ button,select,input{font:inherit;color:inherit} button{background:none;border:0;
   <span class="tag" id="twFrom">From —</span><h3 id="twTitle">—</h3>
   <canvas id="sky" width="600" height="600" aria-label="What the eclipse looks like from your chosen place"></canvas>
   <div id="read"></div><p id="note"></p>
-  <button id="maxBtn">JUMP TO MAXIMUM HERE</button>
+  <button id="maxBtn">Jump to maximum here</button>
 </aside>
 <div id="bar" class="panel">
-  <button class="tb" id="play">▶ PLAY</button>
+  <button class="tb" id="play">▶ Play</button>
   <input type="range" id="t" min="0" max="1000" value="500" aria-label="Time during the eclipse">
   <button class="tb" data-sp="60">×60</button><button class="tb on" data-sp="300">×300</button><button class="tb" data-sp="1200">×1200</button>
   <span id="tlab">—</span>
@@ -255,9 +257,9 @@ function draw(){
   }
 }
 $('t').oninput=()=>{ tNow=t0+(t1-t0)*$('t').value/1000; draw(); };
-$('play').onclick=()=>{ playing=!playing; $('play').textContent=playing?'❚❚ PAUSE':'▶ PLAY'; $('play').classList.toggle('on',playing); if(playing&&tNow>=t1) tNow=t0; };
+$('play').onclick=()=>{ playing=!playing; $('play').textContent=playing?'❚❚ Pause':'▶ Play'; $('play').classList.toggle('on',playing); if(playing&&tNow>=t1) tNow=t0; };
 document.querySelectorAll('[data-sp]').forEach(b=>b.onclick=()=>{ speed=+b.dataset.sp; document.querySelectorAll('[data-sp]').forEach(x=>x.classList.toggle('on',x===b)); });
-let last=performance.now(); function loop(t){ const dt=Math.min(.1,(t-last)/1000); last=t; if(playing&&cur){ tNow+=dt*speed*1000; if(tNow>=t1){ tNow=t1; playing=false; $('play').textContent='▶ PLAY'; $('play').classList.remove('on'); } draw(); } requestAnimationFrame(loop); }
+let last=performance.now(); function loop(t){ const dt=Math.min(.1,(t-last)/1000); last=t; if(playing&&cur){ tNow+=dt*speed*1000; if(tNow>=t1){ tNow=t1; playing=false; $('play').textContent='▶ Play'; $('play').classList.remove('on'); } draw(); } requestAnimationFrame(loop); }
 map.on('load',()=>{ placePin(); $('load').classList.add('gone');
   const h=location.hash.slice(1); let i=list.findIndex(e=>e.peak.toISOString().slice(0,10)===h); if(i<0) i=list.findIndex(e=>e.peak>Date.now()); pick(Math.max(0,i)); requestAnimationFrame(loop);
   setTimeout(()=>$('hint').style.display='none',9000); });

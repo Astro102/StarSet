@@ -12,11 +12,11 @@
   /* ---------- styles ---------- */
   const fl=document.createElement('link'); fl.rel='stylesheet'; fl.href='https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap'; document.head.appendChild(fl);
   const css=document.createElement('style'); css.textContent=`
-#astroFab{position:fixed;right:var(--ax-r,18px);bottom:var(--ax-b,18px);z-index:9000;display:none;align-items:center;gap:9px;height:48px;padding:0 18px 0 8px;border-radius:999px;border:1px solid rgba(140,190,255,.38);
-  background:linear-gradient(180deg,rgba(22,30,46,.92),rgba(10,14,22,.92));color:#eef3fa;font:500 14px Inter,system-ui,sans-serif;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.45),0 0 0 1px rgba(0,0,0,.3);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);transition:transform .2s,box-shadow .2s,opacity .2s}
+#astroFab{position:fixed;right:var(--ax-r,18px);bottom:var(--ax-b,18px);z-index:9000;display:none;align-items:center;gap:9px;height:48px;padding:0 18px 0 8px;border-radius:999px;border:1px solid rgba(255,255,255,.14);
+  background:rgba(14,19,32,.9);color:#eef3fa;font:600 14px Inter,system-ui,sans-serif;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.4);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);transition:transform .2s,box-shadow .2s,opacity .2s}
 #astroFab.on{display:flex} #astroFab.nudge .ax-orb{animation:axn 1.4s 3 ease-out}
-@keyframes axn{0%{box-shadow:0 0 0 0 rgba(124,182,255,.7)}100%{box-shadow:0 0 0 16px rgba(124,182,255,0)}} #astroFab:hover{transform:translateY(-2px);box-shadow:0 14px 34px rgba(0,0,0,.5),0 0 22px rgba(90,160,255,.25)}
-#astroFab .ax-orb{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,#bfe2ff,#4d8dff 45%,#1b2f6b 80%);box-shadow:0 0 14px rgba(90,160,255,.6)}
+@keyframes axn{0%{box-shadow:0 0 0 0 rgba(124,182,255,.7)}100%{box-shadow:0 0 0 16px rgba(124,182,255,0)}} #astroFab:hover{background:rgba(24,32,50,.95);border-color:rgba(255,255,255,.24)} #astroFab:active{transform:scale(.97)}
+#astroFab .ax-orb{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(140deg,#7cb3ff,#3a6ee0);box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
 #astroFab .ax-orb svg{width:18px;height:18px}
 body.astro-open #astroFab{opacity:0;pointer-events:none}
 #astro{position:fixed;right:18px;bottom:18px;z-index:9001;width:400px;height:min(620px,calc(100vh - 36px));display:flex;flex-direction:column;border-radius:14px;overflow:hidden;
