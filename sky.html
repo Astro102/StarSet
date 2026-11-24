@@ -212,15 +212,19 @@ details.fest[open] summary::before{content:'－ '} details.fest p{font-size:12.5
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="ui.css">
 </head>
-<body>
+<body class="has-ssn">
 <canvas id="sky"></canvas>
 <div id="labels"></div>
 
-<header id="top" class="panel">
-  <a class="nb" href="index.html">← Home</a>
-  <div id="brand"><i></i>TONIGHT'S SKY <small>// STARSET</small></div>
-  <a class="nb opt" href="simulation.html">3D Solar System ↗</a>
-  <div id="clock"><div class="t" id="tLocal">—</div><div class="s" id="tSub">—</div></div>
+<header class="ssn" id="ssn">
+  <a class="ssn-logo" href="index.html" aria-label="StarSet home"><svg width="24" height="24" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="5" fill="#ffb547"/><ellipse cx="14" cy="14" rx="12.5" ry="5" fill="none" stroke="#5fd8ff" stroke-width="1.4" transform="rotate(-25 14 14)"/></svg><span>StarSet</span></a>
+  <span class="ssn-page"><i aria-hidden="true">/</i>Tonight’s Sky</span>
+  <nav class="ssn-links" aria-label="Main"><button class="ssn-ex" type="button" aria-expanded="false" aria-controls="ssnPanel">Explore <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button><a href="sky.html">Night Sky</a><a href="planets.html">Planets</a><a href="index.html#learn">Learn</a></nav>
+  <span class="ssn-gap"></span>
+  <div class="ssn-slot"><div id="clock"><div class="t" id="tLocal">—</div><div class="s" id="tSub">—</div></div></div>
+  <button class="ssn-search" type="button" aria-label="Search StarSet"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Search</span><kbd>⌘K</kbd></button>
+  <a class="btn pri ssn-launch" href="simulation.html">Launch 3D</a>
+  <button class="ssn-menu" type="button" aria-label="Menu" aria-expanded="false" aria-controls="ssnPanel"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
 </header>
 
 <aside id="side" class="panel">

@@ -133,6 +133,48 @@ function share(o={}){ const url=new URL(o.url||location.href,location.href).href
     if(k==='qr'){ const box=modal.querySelector('#ssQr'); if(box.classList.toggle('on')&&!box.firstChild){ try{ const Q=await loadQR(); const q=Q(0,'M'); q.addData(url); q.make(); box.innerHTML=q.createSvgTag({cellSize:4,margin:2,scalable:true}); }catch(_){ box.textContent='QR code could not load.'; box.style.color='#333'; } } } };
   modal.hidden=false; setTimeout(()=>modal.querySelector('[data-s="copy"]').focus(),30); }
 
+
+/* ======================= Shared top bar: Explore panel + search ======================= */
+const NAVG=[['Explore the Solar System',[['simulation.html','3D Solar System','Every planet, moon and spacecraft at today’s position.'],['simulation.html#truescale','True Scale','Real sizes and real distances, together.'],['planets.html','Planets at true distance','Scroll from the Sun to Eris.'],['earth.html','Earth explorer','From orbit down to street level.']]],
+  ['Look up',[['sky.html','Tonight’s sky','Live sky for your city, with phone compass.'],['sky.html#panchang','Panchang in the sky','Tithi, nakshatra and rashi on the real sky.'],['eclipse.html','Eclipse twin view','The shadow on the globe and the view from your city.'],['story.html','Sky poster','A printable poster of the sky on any date.']]],
+  ['How big & how far',[['scale.html','Solar system on your street','Put the Sun on your building and walk to the planets.'],['light.html','Light-time messages','Watch a message cross the Solar System at light speed.']]],
+  ['Learn',[['simulation.html#tours','Guided tours','Narrated, in English, हिन्दी, मराठी and मारवाड़ी.'],['simulation.html#quiz','Space quiz','Ten questions; each answer flies you to the planet.'],['index.html#teach','Lessons for teachers','Step-by-step, projector-friendly.'],['about.html','How StarSet is built','Architecture, data and accuracy checks.']]]];
+const COLS={sun:'#ffb547',mercury:'#a9a39b',venus:'#e3c27a',earth:'#4f8fd8',moon:'#c9c9c9',mars:'#c8643c',jupiter:'#d6a77a',saturn:'#e6cf96',uranus:'#9fdbe3',neptune:'#4a6fe0',pluto:'#d8b48a'};
+const MOONOF={phobos:'Mars',deimos:'Mars',io:'Jupiter',europa:'Jupiter',ganymede:'Jupiter',callisto:'Jupiter',mimas:'Saturn',enceladus:'Saturn',tethys:'Saturn',dione:'Saturn',rhea:'Saturn',titan:'Saturn',iapetus:'Saturn',miranda:'Uranus',ariel:'Uranus',umbriel:'Uranus',titania:'Uranus',oberon:'Uranus',triton:'Neptune',dysnomia:'Eris'};
+const BOD=[['mercury','Mercury','Terrestrial planet'],['venus','Venus','Terrestrial planet'],['earth','Earth','Terrestrial planet'],['mars','Mars','Terrestrial planet'],['jupiter','Jupiter','Gas giant'],['saturn','Saturn','Gas giant'],['uranus','Uranus','Ice giant'],['neptune','Neptune','Ice giant'],['sun','Sun','Our star'],['moon','Moon','Earth’s moon · Chandra'],['ceres','Ceres','Dwarf planet'],['pluto','Pluto','Dwarf planet'],['eris','Eris','Dwarf planet'],['haumea','Haumea','Dwarf planet'],['makemake','Makemake','Dwarf planet'],['charon','Charon','Moon of Pluto'],
+  ...Object.keys(MOONOF).map(k=>[k,k[0].toUpperCase()+k.slice(1)]),['voyager1','Voyager 1','Spacecraft'],['voyager2','Voyager 2','Spacecraft'],['newhorizons','New Horizons','Spacecraft'],['clipper','Europa Clipper','Spacecraft'],['parker','Parker Solar Probe','Spacecraft'],['jwst','James Webb Space Telescope','Space telescope'],['halley','Halley’s Comet','Comet'],['encke','Comet Encke','Comet'],['67p','67P/Churyumov–Gerasimenko','Comet'],['halebopp','Comet Hale–Bopp','Comet']];
+const ALTN={sun:'surya suraj',moon:'chand chandra',mars:'mangal',jupiter:'guru brihaspati',saturn:'shani',venus:'shukra',mercury:'budh',earth:'prithvi dharti',uranus:'arun',neptune:'varun'};
+let IDX=null;
+function index(){ if(IDX) return IDX; IDX=[...BOD.map(([k,n,t])=>({n,sub:t||('Moon of '+MOONOF[k]),url:'simulation.html#'+k,alt:ALTN[k]||'',ic:n.slice(0,2),col:COLS[k]||'#7d8ca3'})),
+  ...NAVG.flatMap(([,L])=>L.map(([url,n,sub])=>({n,sub,url,alt:'',ic:'→',col:'#5fd8ff'}))),{n:'Home',sub:'Tonight’s sky for your city, passport, lessons',url:'index.html',alt:'home passport stamps tonight',ic:'→',col:'#5fd8ff'},
+  ...['Orion','Sirius','Polaris','Betelgeuse','Vega','Scorpius','Ursa Major','Cassiopeia','Pleiades','Andromeda'].map(n=>({n,sub:'Find it in tonight’s sky',url:'sky.html#find='+encodeURIComponent(n),alt:'',ic:'★',col:'#ffe2ad'}))]; return IDX; }
+function initNav(){ const bar=document.querySelector('.ssn'); if(!bar) return;
+  const here=PAGE;
+  bar.querySelectorAll('.ssn-links a').forEach(a=>{ if(a.getAttribute('href')===here) a.setAttribute('aria-current','page'); });
+  const panel=document.createElement('div'); panel.className='ssn-panel'; panel.id='ssnPanel'; panel.hidden=true;
+  panel.innerHTML='<div class="g">'+NAVG.map(([h,L])=>`<section><h4>${esc(h)}</h4>${L.map(([u,b,s])=>`<a href="${u}"${u===here?' aria-current="page"':''}><b>${esc(b)}</b><span>${esc(s)}</span></a>`).join('')}</section>`).join('')+
+    '<section class="mob"><h4>StarSet</h4><a href="index.html"><b>Home</b><span>Tonight from your city, passport, lessons.</span></a><a href="simulation.html"><b>Launch 3D</b><span>The Solar System, live.</span></a></section></div>';
+  document.body.appendChild(panel);
+  const btns=[...bar.querySelectorAll('.ssn-ex,.ssn-menu')];
+  const setP=on=>{ panel.hidden=!on; btns.forEach(b=>b.setAttribute('aria-expanded',on)); };
+  btns.forEach(b=>b.addEventListener('click',e=>{ e.stopPropagation(); setP(panel.hidden); }));
+  document.addEventListener('click',e=>{ if(!panel.hidden&&(!panel.contains(e.target)||e.target.closest('a'))) setP(false); });
+  /* search */
+  const q=document.createElement('div'); q.className='ssn-q'; q.hidden=true; q.setAttribute('role','dialog'); q.setAttribute('aria-label','Search StarSet');
+  q.innerHTML='<div class="box"><label><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#a3b1c4" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" placeholder="Search planets, moons, stars, pages…" aria-label="Search" autocomplete="off"><button class="ss-x" type="button" aria-label="Close">✕</button></label><div class="res" role="listbox"></div><div class="hint">Try “Saturn”, “shani”, “Orion” or “eclipse”.</div></div>';
+  document.body.appendChild(q);
+  const inp=q.querySelector('input'), res=q.querySelector('.res'), hint=q.querySelector('.hint'); let hits=[], hl=0;
+  const openQ=()=>{ setP(false); q.hidden=false; inp.value=''; res.innerHTML=''; hint.hidden=false; inp.focus(); setTimeout(()=>{ if(document.activeElement!==inp) inp.focus(); },60); }, closeQ=()=>{ q.hidden=true; };
+  const draw=()=>{ res.innerHTML=hits.map((h,i)=>`<a role="option" href="${esc(h.url)}" class="${i===hl?'hl':''}"><i style="background:${h.col}" aria-hidden="true">${esc(h.ic)}</i><span><b>${esc(h.n)}</b><small>${esc(h.sub)}</small></span></a>`).join(''); };
+  inp.addEventListener('input',()=>{ const v=inp.value.trim().toLowerCase(); hint.hidden=!!v; if(!v){ hits=[]; res.innerHTML=''; return; }
+    hits=index().map(x=>{ const n=x.n.toLowerCase(), a=x.alt.toLowerCase(); return {x,s:n.startsWith(v)?0:a.split(' ').some(w=>w.startsWith(v))?1:n.includes(v)?2:a.includes(v)?3:9}; }).filter(o=>o.s<9).sort((a,b)=>a.s-b.s).slice(0,7).map(o=>o.x);
+    hits.push({n:`Find “${inp.value.trim()}” in tonight’s sky`,sub:'Stars, constellations, planets',url:'sky.html#find='+encodeURIComponent(inp.value.trim()),ic:'★',col:'#ffe2ad'}); hl=0; draw(); });
+  inp.addEventListener('keydown',e=>{ if(e.key==='Escape') closeQ(); if(!hits.length) return; if(e.key==='ArrowDown'){ hl=(hl+1)%hits.length; draw(); e.preventDefault(); } if(e.key==='ArrowUp'){ hl=(hl-1+hits.length)%hits.length; draw(); e.preventDefault(); } if(e.key==='Enter'){ e.preventDefault(); location.href=hits[hl].url; closeQ(); } });
+  q.addEventListener('click',e=>{ if(e.target===q||e.target.closest('.ss-x')||e.target.closest('a')) closeQ(); });
+  bar.querySelectorAll('.ssn-search').forEach(b=>b.addEventListener('click',openQ));
+  const k=bar.querySelector('.ssn-search kbd'); if(k&&!/Mac|iPhone|iPad/.test(navigator.platform)) k.textContent='Ctrl K';
+  addEventListener('keydown',e=>{ if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){ e.preventDefault(); q.hidden?openQ():closeQ(); } else if(e.key==='Escape'&&!panel.hidden) setP(false); });
+}
 window.StarSet={ stamp, passport, lesson, share, toast, LS };
-ready(()=>{ renderBar(); if(PAGE==='sky.html') stamp('sky'); });
+ready(()=>{ renderBar(); initNav(); if(PAGE==='sky.html') stamp('sky'); });
 })();
