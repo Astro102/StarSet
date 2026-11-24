@@ -527,6 +527,8 @@ body:not(.show-craft) .lbl.craft,body:not(.show-comet) .lbl.comet,body:not(.show
   <button class="tb on" data-speed="7">1 week</button>
   <button class="tb" data-speed="30.4375">1 month</button>
   <button class="tb" data-speed="365.25">1 year</button>
+  <button class="tb" data-speed="3652.5">10 years</button>
+  <button class="tb" data-speed="36525">100 years</button>
   <span class="sep"></span>
   <button class="tb amber" id="tbNow" title="Jump to today">Now</button>
   <button class="tb" id="tbOverview" title="Back to whole system">Overview <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1"/></svg></button>
@@ -1952,7 +1954,7 @@ function handleHash(){
   /* one part or several joined with & — e.g. #saturn&t=2030-08-02,hour (what the Share button makes) */
   const raw=decodeURIComponent(location.hash.slice(1)).toLowerCase(); if(!raw) return; let clear=false;
   for(const h of raw.split('&')){
-    if(h.startsWith('t=')){ const o={}; h.slice(2).split(',').forEach(x=>{ if(/^\d{4}-\d{2}-\d{2}$/.test(x)) o.date=x; else if(['sec','min','hour','day','week','month','year'].includes(x)) o.speed=x; else o.action=x; });
+    if(h.startsWith('t=')){ const o={}; h.slice(2).split(',').forEach(x=>{ if(/^\d{4}-\d{2}-\d{2}$/.test(x)) o.date=x; else if(['sec','min','hour','day','week','month','year','decade','century'].includes(x)) o.speed=x; else o.action=x; });
       window.__starsetChat.time(o); clear=true; continue; }
     if(h==='quiz'){ openQuiz(); continue; }
     if(h==='tours'){ openTours(); continue; }
@@ -1962,7 +1964,7 @@ function handleHash(){
   if(clear) history.replaceState(null,'',location.pathname+location.search);
 }
 /* Share this view: a link that reopens the same body, date and time speed */
-function shareView(){ const d=new Date((simDays+J2000_UNIX_DAYS)*86400000), S={sec:1/86400,min:1/1440,hour:1/24,day:1,week:7,month:30.4375,year:365.25};
+function shareView(){ const d=new Date((simDays+J2000_UNIX_DAYS)*86400000), S={sec:1/86400,min:1/1440,hour:1/24,day:1,week:7,month:30.4375,year:365.25,decade:3652.5,century:36525};
   let sp='week', best=1e9; for(const k in S){ const e=Math.abs(Math.log(speed/S[k])); if(e<best){ best=e; sp=k; } }
   const parts=[]; if(TS.open) parts.push('truescale'); else if(focused) parts.push(focused.data.key);
   parts.push('t='+d.toISOString().slice(0,10)+','+sp+(paused?',pause':''));
@@ -1977,8 +1979,8 @@ window.__starsetChat={
   context:()=>{ const d=new Date((simDays+J2000_UNIX_DAYS)*86400000), lab=document.querySelector('[data-speed].on')?.textContent||'', ts=TS.open?TS.state():null;
     return `3D Solar System. Simulation date ${d.toUTCString()}${paused?' (time paused)':`, time running at ${lab} per second${dir<0?' backwards':''}`}. `+
       (ts?`True Scale mode is open${ts.focus?', looking at '+ts.focus:''}.`:focused?`Camera is focused on ${focused.data.name} (${focused.data.type}).`:'Showing the whole Solar System overview.'); },
-  time:(o={})=>{ const S={sec:'0.0000115741',min:'0.000694444',hour:'0.0416667',day:'1',week:'7',month:'30.4375',year:'365.25'}, N=Object.keys(S), did=[];
-    const label=k=>`1 ${k==='sec'?'second':k==='min'?'minute':k} per second`;
+  time:(o={})=>{ const S={sec:'0.0000115741',min:'0.000694444',hour:'0.0416667',day:'1',week:'7',month:'30.4375',year:'365.25',decade:'3652.5',century:'36525'}, N=Object.keys(S), did=[];
+    const label=k=>k==='decade'?'10 years per second':k==='century'?'100 years per second':`1 ${k==='sec'?'second':k==='min'?'minute':k} per second`;
     if(o.action==='faster'||o.action==='slower'){ const cur=N.findIndex(k=>Math.abs(+S[k]-speed)<1e-9); const i=Math.max(0,Math.min(N.length-1,(cur<0?3:cur)+(o.action==='faster'?1:-1))); o.speed=N[i]; }
     if(o.speed&&S[o.speed]){ document.querySelector(`[data-speed="${S[o.speed]}"]`).click(); did.push('Time speed: '+label(o.speed)); }
     if(o.action==='pause'&&!paused){ togglePause(); did.push('Time paused'); }

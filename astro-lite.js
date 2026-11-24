@@ -154,7 +154,8 @@ function fact(b,what,lang){ const N='**'+nm(b,lang)+'**';
 /* ---------- main ---------- */
 /* ---------- time controls for the 3D view ---------- */
 const UNITS=[['sec',['sec','secs','second','seconds','sekand','सेकंड','सेकेंड']],['min',['min','mins','minute','minutes','minat','मिनट']],['hour',['hour','hours','hr','hrs','ghanta','ghante','ghanta','घंटा','घंटे']],
-  ['day',['day','days','din','दिन']],['week',['week','weeks','hafta','hafte','हफ्ता','हफ़्ता','सप्ताह']],['month',['month','months','mahina','mahine','महीना','महीने']],['year',['year','years','saal','sal','varsh','साल','वर्ष']]];
+  ['day',['day','days','din','दिन']],['week',['week','weeks','hafta','hafte','हफ्ता','हफ़्ता','सप्ताह']],['month',['month','months','mahina','mahine','महीना','महीने']],['year',['year','years','saal','sal','varsh','साल','वर्ष']],
+  ['decade',['10 year','10 years','10 saal','10 sal','decade','decades','dashak','दशक','10 साल']],['century',['100 year','100 years','100 saal','100 sal','century','centuries','sadi','sadee','shatabdi','सदी','शताब्दी','100 साल']]];
 const TIMEW=['time','lapse','timelapse','time lapse','speed','rate','per second','samay','waqt','vakt','समय','टाइम','गति','स्पीड'];
 const SETW=['set','change','make','put','kar','karo','kardo','kar do','karde','kar de','rakh','rakho','rakhdo','chalao','chala','करो','कर दो','रखो','चलाओ'];
 const MONTHS={jan:1,january:1,feb:2,february:2,mar:3,march:3,apr:4,april:4,may:5,jun:6,june:6,jul:7,july:7,aug:8,august:8,sep:9,sept:9,september:9,oct:10,october:10,nov:11,november:11,dec:12,december:12};
@@ -180,7 +181,7 @@ function timeIntent(t,raw){ const o={};
     const now=new Date(); M=M||now.getMonth()+1; D=D||(M===now.getMonth()+1?now.getDate():1);
     o.date=`${Y}-${String(M).padStart(2,'0')}-${String(D).padStart(2,'0')}`; }
   return (o.speed||o.action||o.date)?o:null; }
-const SPEEDTXT={sec:['real time (1 second per second)','real time (1 second per second)'],min:['1 minute per second','1 minute per second'],hour:['1 hour per second','1 ghanta per second'],day:['1 day per second','1 din per second'],week:['1 week per second','1 hafta per second'],month:['1 month per second','1 mahina per second'],year:['1 year per second','1 saal per second']};
+const SPEEDTXT={sec:['real time (1 second per second)','real time (1 second per second)'],min:['1 minute per second','1 minute per second'],hour:['1 hour per second','1 ghanta per second'],day:['1 day per second','1 din per second'],week:['1 week per second','1 hafta per second'],month:['1 month per second','1 mahina per second'],year:['1 year per second','1 saal per second'],decade:['10 years per second','10 saal per second'],century:['100 years per second','100 saal per second']};
 function answer(raw,ctx){ const t=norm(raw), lang=langOf(raw,t), out={text:'',actions:[],lang};
   const bodies=bodiesIn(t); const sky=skyIn(t);
   const want=k=>has(t,W[k]);
