@@ -103,7 +103,9 @@ body.can-grab{cursor:grab} body.grabbing,body.grabbing *{cursor:grabbing!importa
 
 /* the words, set straight over the image */
 #panel{position:fixed;left:max(28px,6vw);top:50%;width:min(520px,40vw);z-index:14;transform:translateY(calc(-50% + 18px));opacity:0;pointer-events:none;transition:opacity .45s,transform .6s cubic-bezier(.2,.7,.2,1);text-shadow:var(--shadow)}
-#panel.on{opacity:1;transform:translateY(-50%);pointer-events:auto}
+#panel.on{opacity:1;transform:translateY(calc(-50% - var(--pshift,0px)));pointer-events:auto}
+/* short screens: drop the extra fact and tighten so the panel never runs into the distance read-out below it */
+#panel.tight .fact{display:none} #panel.tight .rule{margin:12px 0 10px} #panel.tight .nums{margin-top:12px} #panel.tight h2{margin:6px 0 10px}
 #panel .kick{display:block;font:600 var(--t-xs)/1.4 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:#d4dce7}
 #panel h2{font:900 clamp(56px,7.4vw,124px)/.92 var(--display);letter-spacing:-.01em;margin:10px 0 16px;color:#fff}
 #panel .one{font-size:var(--t-lg);line-height:1.5;color:#f0f4f8;max-width:30em}
@@ -117,6 +119,8 @@ body.can-grab{cursor:grab} body.grabbing,body.grabbing *{cursor:grabbing!importa
 #panel .ft{font-size:var(--t-md);color:#f0f4f8;margin-bottom:16px;max-width:30em}
 #panel .ft span{display:block;font:600 var(--t-xs)/1.4 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:#d4dce7;margin-bottom:4px}
 #panel .acts{display:flex;gap:10px 18px;flex-wrap:wrap;align-items:center}
+#panel .ftrow{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 22px}   /* the feature line with its button on the right, one row shorter */
+#panel .ftrow .ft{margin-bottom:0;flex:0 1 auto}
 #panel .pmin{position:absolute;right:0;top:-56px;min-height:44px;padding:0 12px;border-radius:var(--r1);font:600 var(--t-xs)/1 var(--sans);letter-spacing:.12em;text-transform:uppercase;color:#d4dce7}
 #panel .pmin:hover{background:rgba(255,255,255,.06)}
 #panel .more{display:none}
@@ -202,7 +206,8 @@ body.docked .mk,body.docked .fly,body.docked .say{opacity:0!important;pointer-ev
   #nav{padding:4px 14px}
   .hero{padding:56px 20px 0} .hero h1{margin:10px 0 8px;width:min(720px,80vw)} .hero .lead{font-size:var(--t-sm)} .cta{margin-top:10px} .hint{display:none}
   .mk{display:flex}
-  #panel{left:24px;width:min(400px,52vw);top:52%} #panel h2{font-size:44px;margin:4px 0 8px}
+  #panel{left:24px;right:auto;width:min(400px,52vw);top:52%;bottom:auto;transform:translateY(calc(-50% + 16px))}
+  #panel.on{transform:translateY(calc(-50% - var(--pshift,0px)))} #panel h2{font-size:44px;margin:4px 0 8px}
   #panel .one{font-size:var(--t-sm)} #panel .nums,#panel .fact,#panel .rule,#panel .ft{display:none} #panel .acts{margin-top:10px}
   #panel .pmin{top:-46px}
   #panelPill{left:24px}
@@ -583,8 +588,8 @@ STOPS.forEach((s,i)=>{ s.i=i; const lt=s.a*AU_KM/C_KMS;
     ${s.fact?`<p class="fact">${s.fact}</p>`:''}
     ${s.moon?`<p class="fact">At this scale the Moon is just <b class="mzpx"></b> from Earth. Every Apollo mission happened inside that gap.</p>`:''}
     <div class="rule"></div>
-    <p class="ft"><span>${s.feat.t}</span>${s.feat.h}</p>
-    <div class="acts"><a class="btn primary" href="${s.feat.href}">${BTN[s.key]||'Open'}</a>${(s.more||[]).map(m=>`<a class="tlink" href="${m.href}">${MORE_BTN[m.t]||m.t} →</a>`).join('')}</div>
+    <div class="ftrow"><p class="ft"><span>${s.feat.t}</span>${s.feat.h}</p>
+    <div class="acts"><a class="btn primary" href="${s.feat.href}">${BTN[s.key]||'Open'}</a>${(s.more||[]).map(m=>`<a class="tlink" href="${m.href}">${MORE_BTN[m.t]||m.t} →</a>`).join('')}</div></div>
     <button class="more">More about ${s.name}</button>`; });
 FLY.forEach(([a,col,name,txt])=>{ const el=document.createElement('div'); el.className='fly'; el.dataset.a=a; el.innerHTML=`<i style="color:${col};background:${col}"></i><b>Passing · ${name}</b><span>${txt}</span>`; track.appendChild(el); });
 SAY.forEach(([a,t,sm])=>{ const el=document.createElement('p'); el.className='say'; el.innerHTML=t+(sm?`<small>${sm}</small>`:''); el.dataset.a=a; track.appendChild(el); });
@@ -608,7 +613,13 @@ function setPanel(s){ const k=s?s.key:null; if(k===panelKey) return; panelKey=k;
   if(!s){ showPanel(); return; }
   clearTimeout(setPanel._st); setPanel._st=setTimeout(()=>{ if(panelKey===s.key&&window.StarSet) StarSet.stamp(s.key); },1500);   // a stamp needs a real visit, not a fly-past
   panel.classList.remove('on','full'); clearTimeout(panel._t);
-  panel._t=setTimeout(()=>{ panel.innerHTML=s.html; fixMoon(); showPanel(); },panel.innerHTML?160:0); }
+  panel._t=setTimeout(()=>{ panel.innerHTML=s.html; fixMoon(); fitPanel(); showPanel(); },panel.innerHTML?160:0); }
+function fitPanel(){ panel.classList.remove('tight'); panel.style.removeProperty('--pshift');
+  if(innerWidth<=820&&innerHeight>500) return;                                   // phones in portrait use their own bottom layout
+  const hud=$('hud'), hudTop=innerHeight-parseFloat(getComputedStyle(hud).bottom)-hud.offsetHeight-14;
+  const top=()=>parseFloat(getComputedStyle(panel).top)-panel.offsetHeight/2, bottom=()=>top()+panel.offsetHeight;
+  if(bottom()>hudTop) panel.classList.add('tight');
+  const over=bottom()-hudTop; if(over>0) panel.style.setProperty('--pshift',Math.min(over,Math.max(0,top()-72))+'px'); }
 addEventListener('keydown',e=>{ if((e.key==='i'||e.key==='I')&&!/INPUT|TEXTAREA/.test(document.activeElement.tagName)&&panelStop) setMin(!panelMin); });
 
 /* ---------- timeline along the bottom (a map, not to scale) ---------- */
@@ -749,7 +760,7 @@ function hud(a){ const on=scrollY>VH*.5; $('hud').classList.toggle('on',on); $('
   if(n){ const scr=(yOf(n.a)-(scrollY+SHIP()))/VH; $('hNext').innerHTML=`<small>Next</small>${n.name} · ${scr<1.05?'just ahead':scr.toFixed(1)+' screens'} ↓`; }
   else $('hNext').innerHTML='<small>End of the page</small>Back to the Sun ↑';
 }
-addEventListener('resize',()=>{ sizeCv(); layout(); });
+addEventListener('resize',()=>{ sizeCv(); layout(); if(panel.innerHTML) fitPanel(); });
 sizeCv(); layout(); requestAnimationFrame(frame);
 if(document.fonts) document.fonts.ready.then(layout);
 initSun().then(preloadTex);
