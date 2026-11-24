@@ -8,7 +8,21 @@ Owner: Suraj. He writes in Hinglish — reply in simple, Hinglish-friendly Engli
 - A copy also lives as a claude.ai artifact (that copy gets the full AI Astro through `window.claude`).
 - **No build step, no framework.** Every page is one self-contained HTML file with inline CSS/JS, plus a
   few shared `.js`/`.css` files. Open with any static server: `python -m http.server 8765`.
-- Workflow the owner expects: make the change, test it, commit, push to `main` (Pages deploys in ~1 min).
+- Workflow the owner expects: make the change, test it, commit, and push to `main` **only after Suraj
+  says yes** (Pages deploys in ~1 min). See "Working with Suraj" below.
+
+## Working with Suraj
+Suraj is not a developer. Follow these rules every time:
+- **Explain simply.** Use simple, Hinglish-friendly English. Avoid technical words; if one is
+  needed, explain it in one short line (e.g. "commit = save point", "push = upload to GitHub").
+- **Plan first for big changes.** Before any big change (new feature, many files, deleting or moving
+  things, changing how a page looks or works), tell him the plan in a few simple points and **wait
+  for his "haan" / yes**. Small fixes (a typo, one line) can go ahead directly.
+- **Test after every change.** Run the smoke test (`python tools/test/smoke.py`, or just the changed
+  page) and **show him screenshots** of the changed page(s) from `tools/test/shots/`. Tell him in
+  plain words if anything failed.
+- **Push only with permission.** Never push to GitHub without his clear permission for that change.
+  Saving locally (commit) is fine; ask before pushing.
 
 ## Pages
 | File | What it is |
