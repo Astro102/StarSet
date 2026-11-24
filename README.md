@@ -29,3 +29,9 @@ Open a terminal in this folder and run `python3 -m http.server 8000`, then visit
 Inside claude.ai, Astro answers with Claude (AI). Everywhere else, including GitHub Pages, it runs as **Astro Lite**
 (`astro-lite.js`): an offline, rule-based guide that understands English, Hinglish and Hindi, answers from StarSet's own
 planet data, and can still fly the 3D view, point the sky and open pages. No API key or server needed.
+
+## Developing
+No build step — open any page through a static server (`python -m http.server 8765`).
+- Tests: `python tools/test/smoke.py` (needs `pip install playwright && python -m playwright install chromium`)
+- Offline Astro chatbot: `node tools/astro-lite/kb.js && node tools/astro-lite/build.js`
+- Notes for Claude Code: see `CLAUDE.md`
