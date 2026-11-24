@@ -368,8 +368,9 @@ button.list-h svg{margin-left:auto;transition:transform .2s} .grp.open button.li
 #tTitle{display:flex;flex-direction:column} #tName{order:1}
 .hbtns{position:absolute;top:8px;right:8px;opacity:.0;transition:opacity .2s} #telemetry:hover .hbtns,#telemetry:focus-within .hbtns{opacity:1}
 #tClose,#tMin{border:0;font:500 11px var(--sans);padding:3px 6px}
-#tQuick{display:grid;grid-template-columns:1fr auto;gap:12px 10px;margin:18px 0 12px;font-size:13px}
-#tQuick dt{color:#a7b0bd} #tQuick dd{text-align:right;color:var(--text);white-space:nowrap}
+#tQuick{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:12px 10px;margin:18px 0 12px;font-size:13px}
+#tQuick dt{color:#a7b0bd} #tQuick dd{text-align:right;color:var(--text);white-space:normal;overflow-wrap:anywhere;line-height:1.35}   /* long values wrap inside the card instead of scrolling sideways */
+#telemetry{overflow-x:hidden} #telemetry .head>*{min-width:0} #tName{overflow-wrap:anywhere} .stats b,.live div b{overflow-wrap:anywhere}
 .tmore{display:block;width:100%;padding:9px 0 4px;margin-top:2px;border-top:1px solid var(--line);color:var(--cyan);font:500 12px var(--sans);text-align:center}
 .tmore:hover{color:#fff}
 #telemetry.full{width:330px} #telemetry.full .tmore span{display:inline-block;transform:rotate(-90deg)}
