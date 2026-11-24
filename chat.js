@@ -4,7 +4,7 @@
 (()=>{
   if(window.__astro) return; window.__astro=true;
   const PAGE=(location.pathname.split('/').pop()||'index.html').replace(/\?.*/,'')||'index.html';
-  const PAGES={ 'index.html':'Home · scroll journey from the Sun to Eris at true distance', 'simulation.html':'3D Solar System (mission control)', 'sky.html':"Tonight's Sky (Stellarium-style live sky)", 'earth.html':'Earth explorer globe', 'eclipse.html':'Eclipse twin view', 'scale.html':'Solar system on your street', 'light.html':'Light-time messages', 'story.html':'Your sky story poster', 'about.html':'How StarSet is built' };
+  const PAGES={ 'index.html':'Home · tonight\'s sky for your city, ways in, Explorer passport, lessons for teachers', 'planets.html':'Planets · scroll journey from the Sun to Eris at true distance', 'simulation.html':'3D Solar System (mission control)', 'sky.html':"Tonight's Sky (Stellarium-style live sky)", 'earth.html':'Earth explorer globe', 'eclipse.html':'Eclipse twin view', 'scale.html':'Solar system on your street', 'light.html':'Light-time messages', 'story.html':'Your sky story poster', 'about.html':'How StarSet is built' };
   const BODY_KEYS=['sun','mercury','venus','earth','moon','mars','phobos','deimos','ceres','jupiter','io','europa','ganymede','callisto','saturn','mimas','enceladus','tethys','dione','rhea','titan','iapetus','uranus','miranda','ariel','umbriel','titania','oberon','neptune','triton','pluto','charon','haumea','makemake','eris','dysnomia','halley','halebopp','encke','67p','voyager1','voyager2','newhorizons','parker','jwst','clipper'];
   const TS_KEYS=['sun','mercury','venus','earth','moon','mars','jupiter','saturn','uranus','neptune','pluto'];
   const ss={ get(k,d){ try{ const v=sessionStorage.getItem(k); return v==null?d:JSON.parse(v); }catch(e){ return d; } }, set(k,v){ try{ sessionStorage.setItem(k,JSON.stringify(v)); }catch(e){} } };
@@ -73,7 +73,7 @@ body.astro-open #astroFab{opacity:0;pointer-events:none}
 
   /* ---------- per-page placement of the launcher (keeps clear of each page's own controls) ---------- */
   const POS={ // [desktop bottom, desktop right, phone bottom, phone right, landscape bottom, landscape right]
-    'index.html':[96,18,150,12,64,10], 'simulation.html':[136,18,112,10,44,10], 'sky.html':[86,18,128,12,54,10], 'earth.html':[86,18,96,12,54,10],
+    'index.html':[18,18,12,12,10,10], 'planets.html':[96,18,150,12,64,10], 'simulation.html':[136,18,112,10,44,10], 'sky.html':[86,18,128,12,54,10], 'earth.html':[86,18,96,12,54,10],
     'eclipse.html':[96,18,120,12,60,10], 'scale.html':[18,18,12,12,10,10], 'light.html':[18,18,12,12,10,10], 'story.html':[18,18,12,12,10,10], 'about.html':[18,18,12,12,10,10] };
   const P=POS[PAGE]||POS['about.html'], rs=document.documentElement.style;
   [['--ax-b',0],['--ax-r',1],['--ax-bm',2],['--ax-rm',3],['--ax-bl',4],['--ax-rl',5]].forEach(([k,i])=>rs.setProperty(k,P[i]+'px'));
@@ -122,7 +122,8 @@ body.astro-open #astroFab{opacity:0;pointer-events:none}
 
   /* ---------- rendering ---------- */
   function sugs(){ const C=window.__starsetChat, f=C&&C.focusName&&C.focusName();
-    const S={ 'index.html':['How far is Neptune, really?','Why is Pluto not a planet anymore?','Chand pe ek din kitna lamba hota hai?','What can I do on StarSet?'],
+    const S={ 'index.html':['What can I see in the sky tonight?','How far is Neptune, really?','Chand pe ek din kitna lamba hota hai?','What can I do on StarSet?'],
+      'planets.html':['How far is Neptune, really?','Why is Pluto not a planet anymore?','How long does sunlight take to reach Saturn?','Show me Jupiter in 3D'],
       'simulation.html':[f&&f!=='Sun'?`Tell me about ${f}`:'Show me Saturn','Take me to Voyager 1','Why does Mars look red?','Jupiter ke kitne moons hain?'],
       'sky.html':['What can I see in the sky tonight?','Show me Orion','Which planet is brightest right now?','Dhruv tara kaise dhundhe?'],
       'eclipse.html':["Why don't we get an eclipse every month?",'When is the next solar eclipse visible in India?','Grahan ko dekhna safe kaise hai?'],
@@ -153,6 +154,8 @@ body.astro-open #astroFab{opacity:0;pointer-events:none}
   function open(){ box.hidden=false; document.body.classList.add('astro-open'); fab.setAttribute('aria-expanded','true'); render(); ss.set('starset.astro.open',true); setTimeout(()=>$('axIn').focus({preventScroll:true}),60); }
   function close(){ box.hidden=true; document.body.classList.remove('astro-open'); fab.setAttribute('aria-expanded','false'); ss.set('starset.astro.open',false); stopSpeak(); fab.focus({preventScroll:true}); }
   window.__astroOpen=open;
+  /* ask a question from outside the chat (the home page's Ask Astro box): opens the panel and sends it once Astro is ready */
+  window.__astroAsk=t=>{ open(); let n=0; const go=()=>{ if(busy) return; if(sample||lite) send(t); else if(n++<60) setTimeout(go,100); else { $('axIn').value=t; } }; go(); };
   function nudge(){ fab.classList.add('nudge'); setTimeout(()=>fab.classList.remove('nudge'),6000); }
 
   /* ---------- the brain ---------- */
@@ -169,7 +172,8 @@ How to answer:
 - Time controls in the 3D view ("change the time lapse to 1 hour", "pause time", "2030 me le chalo", "run time backwards"): use set_time, then confirm in one short line.
 - When the user wants to SEE something ("show", "take me", "dikhao", "open", "where is"), use a tool, then say in one short line what you opened, plus one interesting fact.
 StarSet pages and features you can point to:
-- index.html: scroll journey from the Sun out to Eris at true distance (1 AU ≈ one screen).
+- index.html: the home page — tonight's planets, Moon phase and next eclipse for the user's city, the Explorer passport (stamps for visiting worlds and acing the quiz), and step-by-step lessons for teachers.
+- planets.html: scroll journey from the Sun out to Eris at true distance (1 AU ≈ one screen).
 - simulation.html: 3D Solar System with every planet, major moons, dwarf planets, comets and spacecraft at their real positions; time controls; search; anchors #tours (narrated guided tours in English, Hindi, Marathi, Marwari), #quiz (10-question space quiz), #truescale (True Scale mode: real sizes and real distances, travel at light speed or by car).
 - sky.html: Tonight's Sky, a Stellarium-style live sky for the user's city with compass mode; anchor #panchang shows tithi, nakshatra and rashi on the real sky.
 - eclipse.html: eclipse twin view (shadow on the globe + view from your city). earth.html: Earth explorer globe. scale.html: the solar system scaled onto your street. light.html: light-time messages across the Solar System. story.html: printable poster of the sky on any date. about.html: how StarSet was built.`;

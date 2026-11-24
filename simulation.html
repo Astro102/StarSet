@@ -332,6 +332,9 @@ body{font-feature-settings:'tnum' 1,'cv11' 1;-webkit-font-smoothing:antialiased}
 #clock .date{color:var(--text);font:500 15px var(--sans);letter-spacing:.01em} #clock .date em{font-style:normal;color:var(--amber)}
 #clock .sub{color:rgba(255,181,71,.7);font:500 11px var(--sans);letter-spacing:.03em}
 #skyBtn,#tsBtn,#tourBtn,#quizBtn{display:inline-flex;align-items:center;height:32px;padding:0 13px;border:1px solid rgba(160,190,230,.38);color:var(--text);border-radius:4px;font:500 12px var(--sans);letter-spacing:.06em;background:rgba(255,255,255,.02);transition:background .15s,border-color .15s}
+#shareBtn{display:inline-flex;align-items:center;justify-content:center;height:32px;width:34px;border:1px solid rgba(160,190,230,.38);color:var(--text);border-radius:4px;background:rgba(255,255,255,.02)}
+#shareBtn:hover{background:rgba(255,255,255,.08);border-color:rgba(190,215,250,.65)}
+@media (max-width:760px){ #shareBtn{display:none} }
 #skyBtn:hover,#tsBtn:hover,#tourBtn:hover,#quizBtn:hover{background:rgba(255,255,255,.08);border-color:rgba(190,215,250,.65)}
 /* bodies list */
 #bodies{top:68px;left:10px;width:186px;padding:0;max-height:calc(100% - 150px)}
@@ -448,6 +451,7 @@ body:not(.show-craft) .lbl.craft,body:not(.show-comet) .lbl.comet,body:not(.show
 <script type="speculationrules">{"prefetch":[{"source":"document","where":{"href_matches":"*.html"},"eagerness":"moderate"}]}</script>
 <script src="perf.js" defer></script>
 <script src="chat.js" defer></script>
+<script src="site.js" defer></script>
 </head>
 <body>
 <canvas id="scene"></canvas>
@@ -460,7 +464,7 @@ body:not(.show-craft) .lbl.craft,body:not(.show-comet) .lbl.comet,body:not(.show
   <button id="navBtn" aria-label="Open menu" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
   <a id="brand" href="index.html" title="StarSet home"><svg class="star" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 1.5l1.9 7.2 6.8-3.4-4.6 6 6.4 2.9-7.3.8 1.2 7.5L12 16.2l-4.4 6.3 1.2-7.5-7.3-.8 6.4-2.9-4.6-6 6.8 3.4z" fill="url(#sg)"/><defs><linearGradient id="sg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9fd4ff"/><stop offset="1" stop-color="#3d7bff"/></linearGradient></defs></svg>STARSET <small>/ SOLAR SYSTEM MISSION CONTROL</small></a>
   <nav id="navMenu" hidden>
-    <a href="index.html">Home · Journey</a><a href="sky.html">Tonight's Sky</a><a href="earth.html">Earth explorer</a><a href="eclipse.html">Eclipses</a><a href="scale.html">Scale of things</a><a href="light.html">Speed of light</a><a href="story.html">Sky stories</a><a href="about.html">About</a><button id="musicItem" type="button" hidden>🎵 Music: <b>on</b></button>
+    <a href="index.html">Home</a><a href="planets.html">Planets journey</a><a href="sky.html">Tonight's Sky</a><a href="earth.html">Earth explorer</a><a href="eclipse.html">Eclipses</a><a href="scale.html">Scale of things</a><a href="light.html">Speed of light</a><a href="story.html">Sky stories</a><a href="about.html">About</a><button id="shareItem" type="button">Share this view</button><button id="musicItem" type="button" hidden>🎵 Music: <b>on</b></button>
   </nav>
   <div id="srch" role="combobox" aria-haspopup="listbox" aria-expanded="false">
     <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
@@ -473,6 +477,7 @@ body:not(.show-craft) .lbl.craft,body:not(.show-comet) .lbl.comet,body:not(.show
   <button id="tsBtn" title="Every size and distance real">TRUE SCALE</button>
   <button id="tourBtn">TOURS</button>
   <button id="quizBtn">QUIZ</button>
+  <button id="shareBtn" title="Share this exact view: planet, date and speed" aria-label="Share this view"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg></button>
   <button id="musicBtn" title="Music: Deep Space Drift by Suraj (made with Suno)" aria-label="Background music" aria-pressed="false" hidden><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/><path class="mx" d="M3 3l18 18"/></svg></button>
 </header>
 
@@ -1464,6 +1469,7 @@ function updateLive(){
 
 const tmpV=new THREE.Vector3();
 function focusBody(b,opt={}){
+  if(window.StarSet&&b&&b.data) StarSet.stamp(b.data.key);
   focused=b; previewBody=null; if(b._grp&&b._grp._open) b._grp._open(); bodies.forEach(x=>{ x.btn&&x.btn.classList.toggle('active',x===b); x.label&&x.label.classList.toggle('active',x===b); });
   b.group.getWorldPosition(tmpV);
   let dist = b.kind==='sun'? 32 : b.kind==='belt'? b.data.view : b.kind==='craft'? 7 : b.kind==='comet'? 11 : Math.max(b.size*6, b.size<.3? .9 : 3) + (b.data.key==='saturn'?6:0);
@@ -1786,6 +1792,7 @@ function answer(i,btn){
 $('qNext').onclick=()=>{ qi++; if(qi<qSet.length) renderQ(); else showResult(); };
 function showResult(){
   $('qBody').hidden=true; $('qProg').firstElementChild.style.width='100%'; $('qCount').textContent='Mission debrief';
+  if(score>=7&&window.StarSet) StarSet.stamp('quiz');
   const pct=score/qSet.length, rank=pct===1?'Flight Director':pct>=.7?'Mission Specialist':pct>=.4?'Cadet Astronaut':'Ground Crew Trainee';
   $('qResult').hidden=false;
   $('qResult').innerHTML=`<div class="big">${score}/${qSet.length}</div><p class="tag" style="margin:6px 0 14px">Rank · ${rank}</p>
@@ -1928,14 +1935,26 @@ function tickTour(dt){ if(!tour||!tourAuto||flight) return; tourT+=dt; const st=
   if(tourT>dur){ if(tour.i<TOURS[tour.k].steps.length-1){ tour.i++; runStep_(); } else { tourAuto=false; $('tcAuto').classList.remove('on'); } } }
 
 function handleHash(){
-  const h=decodeURIComponent(location.hash.slice(1)).toLowerCase(); if(!h) return;
-  if(h.startsWith('t=')){ const o={}; h.slice(2).split(',').forEach(x=>{ if(/^\d{4}-\d{2}-\d{2}$/.test(x)) o.date=x; else if(['sec','min','hour','day','week','month','year'].includes(x)) o.speed=x; else o.action=x; });
-    window.__starsetChat.time(o); history.replaceState(null,'',location.pathname+location.search); return; }
-  if(h==='quiz'){ openQuiz(); return; }
-  if(h==='tours'){ openTours(); return; }
-  if(h.startsWith('tour-')){ startTour(h.slice(5)); return; }
-  const b=bodies.find(x=>x.data.key===h); if(b) focusBody(b);
+  /* one part or several joined with & — e.g. #saturn&t=2030-08-02,hour (what the Share button makes) */
+  const raw=decodeURIComponent(location.hash.slice(1)).toLowerCase(); if(!raw) return; let clear=false;
+  for(const h of raw.split('&')){
+    if(h.startsWith('t=')){ const o={}; h.slice(2).split(',').forEach(x=>{ if(/^\d{4}-\d{2}-\d{2}$/.test(x)) o.date=x; else if(['sec','min','hour','day','week','month','year'].includes(x)) o.speed=x; else o.action=x; });
+      window.__starsetChat.time(o); clear=true; continue; }
+    if(h==='quiz'){ openQuiz(); continue; }
+    if(h==='tours'){ openTours(); continue; }
+    if(h.startsWith('tour-')){ startTour(h.slice(5)); continue; }
+    const b=bodies.find(x=>x.data.key===h); if(b) focusBody(b);
+  }
+  if(clear) history.replaceState(null,'',location.pathname+location.search);
 }
+/* Share this view: a link that reopens the same body, date and time speed */
+function shareView(){ const d=new Date((simDays+J2000_UNIX_DAYS)*86400000), S={sec:1/86400,min:1/1440,hour:1/24,day:1,week:7,month:30.4375,year:365.25};
+  let sp='week', best=1e9; for(const k in S){ const e=Math.abs(Math.log(speed/S[k])); if(e<best){ best=e; sp=k; } }
+  const parts=[]; if(TS.open) parts.push('truescale'); else if(focused) parts.push(focused.data.key);
+  parts.push('t='+d.toISOString().slice(0,10)+','+sp+(paused?',pause':''));
+  const name=TS.open?'True Scale':focused?focused.data.name:'the Solar System';
+  if(window.StarSet) StarSet.share({url:'simulation.html#'+parts.join('&'),title:`StarSet — ${name}`,text:`Look at ${name} on ${d.toDateString().slice(4)} in StarSet:`}); }
+$('shareBtn').onclick=shareView; $('shareItem').onclick=()=>{ $('navMenu').hidden=true; $('navBtn').setAttribute('aria-expanded','false'); shareView(); };
 addEventListener('hashchange',()=>{ if(si>=steps.length) handleHash(); });
 /* hooks for Astro, the chat guide (chat.js): what's on screen, and a way to fly somewhere */
 window.__starsetChat={
@@ -2139,7 +2158,7 @@ const TS=(()=>{
   return { AQ:TSAQ, get open(){ return open; }, frame, show, hide, goTo:k=>goTo(B.find(x=>x.key===k)), state:()=>({focus:focus&&focus.key,origin,trip:!!trip,cam:cam3&&cam3.position.length()}) };
 })();
 window.__ts=TS;
-if(location.hash==='#truescale') setTimeout(()=>TS.show(),1500);
+if(/^#truescale(&|$)/.test(location.hash)) setTimeout(()=>TS.show(),1500);
 
 /* go */
 log('✓ Three.js r160 loaded');

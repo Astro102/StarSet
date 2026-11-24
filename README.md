@@ -1,7 +1,14 @@
 # StarSet
 
 An educational astronomy website: a 3D Solar System with real positions, Tonight's Sky, Panchang in the real sky,
-eclipses, True Scale travel, and more. Static HTML + JavaScript, no build step, no server.
+eclipses, True Scale travel, and more.
+
+## Pages
+- `index.html` — home: tonight's planets, Moon and next eclipse for your city; Explorer passport; lessons for teachers
+- `planets.html` — scroll from the Sun to Eris at true distance
+- `simulation.html` — the 3D Solar System (Share button links the exact view)
+- `sky.html`, `eclipse.html`, `earth.html`, `scale.html`, `light.html`, `story.html`, `about.html`
+- `site.js` — shared passport, lesson player and share sheet; `globe.js` — the WebGL planet globe on the home page Static HTML + JavaScript, no build step, no server.
 
 Designed and built by Suraj.
 
@@ -15,7 +22,8 @@ Open a terminal in this folder and run `python3 -m http.server 8000`, then visit
 - Country shapes: Natural Earth (public domain)
 - Planet textures: Solar System Scope (CC BY 4.0); Milky Way panorama: ESO/S. Brunier (CC BY 4.0);
   moon maps from the Celestia community (CC BY / BY-SA / CC0)
-- Music in the 3D view: "Deep Space Drift" by Suraj, made with Suno (`audio/deep-space-drift.mp3`)
+- QR codes: qrcode-generator by Kazuhiko Arase (MIT, `lib/qrcode.js`)
+- Music: "Deep Space Drift" by Suraj, made with Suno (`audio/deep-space-drift.mp3`)
 
 ## Astro, the space guide
 Inside claude.ai, Astro answers with Claude (AI). Everywhere else, including GitHub Pages, it runs as **Astro Lite**

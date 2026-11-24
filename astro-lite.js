@@ -59,7 +59,8 @@ const OPEN=[ [['quiz','क्विज़','क्विज'],'simulation.html',
   [['earth explorer','globe'],'earth.html','','the Earth explorer'], [['street','scale page','my street'],'scale.html','','Solar system on your street'],
   [['light time','message','signal'],'light.html','','Light-time messages'], [['poster','sky story','birthday sky','story'],'story.html','','Your sky story'],
   [['about','how starset','case study','who made','who built'],'about.html','','How StarSet is built'], [['3d','simulation','solar system model','3d model'],'simulation.html','','the 3D Solar System'],
-  [['home','journey','landing'],'index.html','','the home page'] ];
+  [['planets page','planets journey','journey','scroll','true distance'],'planets.html','','the Planets journey'],
+  [['home','landing','passport','stamps','lesson','teacher mode'],'index.html','','the home page'] ];
 
 /* ---------- explainers (checked facts, short) ---------- */
 const FAQ=[
