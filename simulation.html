@@ -82,6 +82,9 @@ body.touring #hint{opacity:0!important}
 #quizBtn:hover{background:var(--amber-dim)}
 
 /* body list */
+#recenter{position:fixed;left:50%;bottom:132px;transform:translateX(-50%);z-index:7;min-height:40px;padding:0 18px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(10,15,26,.9);color:#e6edf6;font:600 14px var(--sans);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 8px 24px rgba(0,0,0,.45);cursor:pointer}
+#recenter:hover{background:rgba(24,32,50,.95)}
+@media (max-width:820px){ #recenter{bottom:150px} }
 #bodies{position:fixed;left:12px;top:78px;width:200px;padding:12px;z-index:5;max-height:calc(100% - 190px);overflow:auto}
 #bodies h3{margin:0}
 #bodies{width:214px}
@@ -459,6 +462,7 @@ body:not(.show-craft) .lbl.craft,body:not(.show-comet) .lbl.comet,body:not(.show
 <canvas id="scene"></canvas>
 <div id="fx" aria-hidden="true"></div>
 <div id="labels"></div>
+<button id="recenter" hidden>Reset view</button>
 <!-- Background music: "Deep Space Drift" by Suraj, made with Suno (bundled with the site). -->
 <audio id="bgm" loop preload="none" src="audio/deep-space-drift.mp3"></audio>
 
@@ -836,6 +840,9 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; controls.dampingFactor = .065; controls.minDistance = .35; controls.maxDistance = 900;
 controls.rotateSpeed = 1.35; controls.panSpeed = 1.4;
 controls.enableZoom = true;    // kept on for two-finger pinch on touchscreens; mouse/trackpad wheel is handled below
+/* phones: two fingers pinch-zoom and twist, but never drag the centre of the view away. A pinch that slid sideways used to pan
+   the camera off into the planet lanes, where the enlarged planets pile up on top of each other. */
+controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_ROTATE };
 
 /* Zoom tuned for trackpads: OrbitControls scales zoom by wheel delta, so the tiny deltas a
    trackpad (and especially a pinch) sends barely move the camera. Here every gesture changes the
@@ -1507,6 +1514,11 @@ function overview(){
   zoomGoal=null; flight={ t:0, fromOffset:camera.position.clone().sub(controls.target), fromTarget:controls.target.clone(), toOffset:new THREE.Vector3(0,90,170), overview:true };
 }
 $('tClose').onclick=overview; $('tbOverview').onclick=overview;
+/* "Reset view" chip: appears when, with nothing selected, the view has wandered far from the Sun or skims the planets' plane */
+setInterval(()=>{ const el=$('recenter'); if(!el) return; const off=camera.position.clone().sub(controls.target), el2=Math.asin(Math.abs(off.y)/off.length());
+  const lost=!focused&&!flight&&!TS.open&&(controls.target.length()>20||el2<.12||off.length()<14);
+  if(el.hidden===lost) el.hidden=!lost; },600);
+$('recenter').onclick=()=>{ $('recenter').hidden=true; overview(); };
 new MutationObserver(()=>{ const f=$('telemetry').classList.contains('full'); $('tMore').firstChild.textContent=f?'Hide Details ':'View Details '; }).observe($('telemetry'),{attributes:true,attributeFilter:['class']});
 $('tMore').onclick=()=>{ const t=$('telemetry'); if(!focused&&previewBody){ focusBody(previewBody); t.classList.add('full'); return; } t.classList.toggle('full'); };
 /* site menu */
